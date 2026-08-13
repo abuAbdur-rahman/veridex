@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Veridex — Design Spec: Colors &amp; Fonts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #F1F3F5;
+    --bg-alt: #E7EAED;
+    --surface: #FFFFFF;
+    --ink: #171E26;
+    --ink-soft: #4A5561;
+    --line: #D7DCE1;
+    --line-soft: #E4E7EA;
+
+    --pass: #1C8C6B;      --pass-bg: #E4F3EE;
+    --pending: #B8792A;   --pending-bg: #F6ECDD;
+    --block: #AF3B3B;     --block-bg: #F5E5E5;
+    --dev: #2F5DAA;       --dev-bg: #E4EBF6;
+
+    --accent: #EA6A0C;
+    --accent-strong: #C9560A;
+    --accent-bg: #FDECD9;
+    --accent-ring: rgba(234,106,12,0.35);
+
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+    --sans: 'Inter', -apple-system, sans-serif;
+    --radius: 10px;
+  }
+
+  [data-theme="dark"]{
+    --bg: #12161B; --bg-alt: #171D24; --surface: #1B2229;
+    --ink: #E7ECEF; --ink-soft: #93A0AC;
+    --line: #2B333C; --line-soft: #232A32;
+    --pass: #4FCBA3; --pass-bg: #16302A;
+    --pending: #E3A75C; --pending-bg: #362A16;
+    --block: #E28080; --block-bg: #362020;
+    --dev: #7FAAE6; --dev-bg: #1D2A3C;
+    --accent: #FB923C; --accent-strong: #FDBA74;
+    --accent-bg: #3A2712; --accent-ring: rgba(251,146,60,0.35);
+  }
+
+  *{ box-sizing: border-box; }
+  body{
+    margin:0; background: var(--bg); color: var(--ink);
+    font-family: var(--sans); line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    transition: background .25s ease, color .25s ease;
+  }
+  .wrap{ max-width: 1040px; margin:0 auto; padding: 0 28px; }
+  a{ color:inherit; }
+
+  header.nav{
+    position:sticky; top:0; z-index:50;
+    background: var(--bg); border-bottom:1px solid var(--line);
+  }
+  .nav-inner{ display:flex; align-items:center; justify-content:space-between; padding:18px 0; }
+  .logo{ font-family:var(--mono); font-weight:700; font-size:16px; display:flex; align-items:center; gap:9px; }
+  .logo .mark{ width:19px; height:17px; flex-shrink:0; display:block; }
+  .logo small{ font-family:var(--mono); font-weight:500; color:var(--ink-soft); font-size:12px; margin-left:2px; }
+  .crumbs{ font-family:var(--mono); font-size:12px; color:var(--ink-soft); display:flex; gap:6px; align-items:center; }
+  .crumbs .current{ color:var(--accent); }
+
+  .toggle{ display:flex; align-items:center; gap:10px; font-family:var(--mono); font-size:12px; color:var(--ink-soft); }
+  .switch{ width:44px; height:24px; border-radius:20px; background:var(--line); border:1px solid var(--line); position:relative; cursor:pointer; flex-shrink:0; transition:background .2s ease; }
+  .switch::after{ content:""; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:var(--surface); box-shadow:0 1px 2px rgba(0,0,0,0.25); transition:transform .2s ease; }
+  [data-theme="dark"] .switch{ background:var(--accent); border-color:var(--accent); }
+  [data-theme="dark"] .switch::after{ transform:translateX(20px); }
+
+  .hero{ padding:52px 0 36px; border-bottom:1px solid var(--line-soft); }
+  .eyebrow{ font-family:var(--mono); font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-soft); background:var(--bg-alt); display:inline-block; padding:6px 10px; border-radius:6px; margin-bottom:16px; }
+  h1{ font-family:var(--mono); font-size:clamp(26px,3.4vw,36px); margin:0 0 12px; font-weight:700; letter-spacing:-0.01em; }
+  .lede{ font-size:15px; color:var(--ink-soft); max-width:68ch; margin:0; }
+
+  .spec-nav{ display:flex; gap:0; margin-top:26px; border-bottom:1px solid var(--line); }
+  .spec-nav a{
+    font-family:var(--mono); font-size:12.5px; font-weight:600; text-decoration:none;
+    color:var(--ink-soft); padding:10px 4px; margin-right:24px;
+    border-bottom:2px solid transparent;
+  }
+  .spec-nav a.active{ color:var(--accent); border-bottom-color:var(--accent); }
+
+  section{ padding:56px 0; border-bottom:1px solid var(--line-soft); }
+  .section-label{ font-family:var(--mono); font-size:11px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:.08em; margin-bottom:8px; }
+  h2{ font-family:var(--mono); font-size:22px; font-weight:700; margin:0 0 8px; letter-spacing:-0.01em; }
+  .section-sub{ color:var(--ink-soft); font-size:14px; margin:0 0 28px; max-width:66ch; }
+
+  h3{ font-family:var(--sans); font-size:14.5px; font-weight:700; margin:32px 0 12px; color:var(--ink); }
+  h3:first-of-type{ margin-top:0; }
+
+  .swatch-row{ display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; }
+  .swatch{ border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--surface); }
+  .swatch-color{ height:50px; }
+  .swatch-meta{ padding:9px 11px; }
+  .swatch-name{ font-family:var(--mono); font-size:11.5px; font-weight:600; }
+  .swatch-hex{ font-family:var(--mono); font-size:10.5px; color:var(--ink-soft); margin-top:2px; }
+
+  table{ width:100%; border-collapse:collapse; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; margin-top:14px; }
+  thead th{ font-family:var(--mono); font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); text-align:left; padding:11px 15px; background:var(--bg-alt); border-bottom:1px solid var(--line); }
+  tbody td{ padding:13px 15px; font-size:13px; border-bottom:1px solid var(--line-soft); vertical-align:top; }
+  tbody tr:last-child td{ border-bottom:none; }
+  td.role{ font-weight:600; white-space:nowrap; }
+  td.example{ color:var(--ink-soft); }
+  .swatch-inline{ display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:7px; vertical-align:-1px; }
+
+  .rule{ border:1px solid var(--accent); background:var(--accent-bg); border-radius:var(--radius); padding:18px 20px; display:flex; gap:14px; align-items:flex-start; margin-top:20px; }
+  .rule .mark{ font-family:var(--mono); font-weight:700; color:var(--accent-strong); font-size:16px; flex-shrink:0; }
+  .rule p{ margin:0; font-size:13.5px; color:var(--ink); line-height:1.6; }
+  .rule code{ font-family:var(--mono); background:var(--surface); padding:1px 6px; border-radius:4px; border:1px solid var(--line); font-size:12.5px; }
+
+  .warn{ border:1px solid var(--block); background:var(--block-bg); border-radius:var(--radius); padding:16px 18px; margin-top:12px; }
+  .warn p{ margin:0; font-size:13px; color:var(--ink); line-height:1.6; }
+  .warn b{ color:var(--block); }
+
+  /* FONT SPECIMEN */
+  .specimen{ border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); padding:26px 28px; margin-bottom:16px; }
+  .specimen-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:16px; flex-wrap:wrap; gap:8px; }
+  .specimen-name{ font-family:var(--mono); font-size:13px; font-weight:700; }
+  .specimen-role{ font-family:var(--mono); font-size:11px; color:var(--accent); background:var(--accent-bg); padding:3px 9px; border-radius:5px; }
+  .specimen-big{ font-size:34px; margin:0 0 6px; line-height:1.2; }
+  .mono-big{ font-family:var(--mono); font-weight:700; }
+  .sans-big{ font-family:var(--sans); font-weight:700; }
+  .specimen-alphabet{ font-size:14px; color:var(--ink-soft); letter-spacing:0.02em; word-break:break-all; }
+  .specimen-weights{ display:flex; gap:18px; margin-top:14px; flex-wrap:wrap; }
+  .weight-sample{ font-size:14px; }
+  .weight-sample .w-label{ display:block; font-family:var(--mono); font-size:10px; color:var(--ink-soft); margin-bottom:3px; }
+
+  .usage-example{ background:var(--bg-alt); border-radius:8px; padding:16px 18px; margin-top:10px; }
+  .u-title{ font-family:var(--mono); font-size:14px; font-weight:700; margin-bottom:4px; }
+  .u-id{ font-family:var(--mono); font-size:11px; color:var(--ink-soft); margin-bottom:8px; }
+  .u-body{ font-family:var(--sans); font-size:13.5px; color:var(--ink-soft); line-height:1.6; }
+
+  .font-rule{ border:1px solid var(--dev); background:var(--dev-bg); border-radius:var(--radius); padding:18px 20px; margin-top:20px; }
+  .font-rule .mark{ color:var(--dev); }
+  .font-rule{ display:flex; gap:14px; align-items:flex-start; }
+  .font-rule p{ margin:0; font-size:13.5px; color:var(--ink); line-height:1.6; }
+  .font-rule code{ font-family:var(--mono); background:var(--surface); padding:1px 6px; border-radius:4px; border:1px solid var(--line); font-size:12.5px; }
+
+  footer{ padding:36px 0 56px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; }
+  .foot-tag{ font-family:var(--mono); font-size:12px; color:var(--ink-soft); }
+
+  @media (max-width:700px){
+    .swatch-row{ grid-template-columns:repeat(2,1fr); }
+    .specimen-alphabet{ font-size:12px; }
+    .hero{ padding: 40px 0 28px; }
+    section{ padding: 40px 0; }
+  }
+  @media (max-width:640px){
+    .wrap{ padding: 0 18px; }
+    .nav-inner{ flex-wrap: wrap; row-gap: 10px; }
+    .crumbs{ font-size: 11px; }
+    h1{ font-size: clamp(24px, 7vw, 30px); }
+    .spec-nav{ overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap; }
+    .spec-nav a{ white-space: nowrap; margin-right: 18px; }
+    table{ display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+    .specimen{ padding: 20px 18px; }
+    .specimen-big{ font-size: 26px; }
+    .specimen-weights{ gap: 12px; }
+  }
+  @media (max-width:420px){
+    .swatch-row{ grid-template-columns: 1fr 1fr; gap:8px; }
+    .specimen-big{ font-size: 22px; }
+  }
+</style>
+</head>
+<body data-theme="light">
+
+<header class="nav">
+  <div class="wrap nav-inner">
+    <div class="logo">
+      <svg class="mark" viewBox="0 0 200 180" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <polygon points="14,10 46,10 110,170 78,170" fill="#4B5563"/>
+        <polygon points="186,10 154,10 90,170 122,170" fill="#4B5563"/>
+        <polygon points="150,10 174,10 102,112 78,112" fill="#2B333C"/>
+        <polygon points="150,10 186,10 168,44" fill="#EA6A0C"/>
+      </svg>
+      VERIDEX<small>/ design spec</small>
+    </div>
+    <div style="display:flex; align-items:center; gap:20px;">
+      <div class="crumbs">Spec <span>/</span> <span class="current">01 Colors &amp; Fonts</span></div>
+      <div class="toggle">
+        <span id="mode-label">light</span>
+        <div class="switch" id="theme-toggle" role="button" aria-label="Toggle dark mode"></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="eyebrow">App spec · Page 01</span>
+    <h1>Colors &amp; Fonts</h1>
+    <p class="lede">The foundation everything else in Veridex is built on. Two independent color systems — status and accent — plus a two-font type system split by role: written by a human, or structured data.</p>
+
+    <nav class="spec-nav">
+      <a href="#colors" class="active">01 · Colors</a>
+      <a href="#fonts">02 · Fonts</a>
+      <a href="#pairing">03 · Pairing rules</a>
+    </nav>
+  </div>
+
+  <section id="colors">
+    <div class="section-label">01</div>
+    <h2>Color system</h2>
+    <p class="section-sub">Two systems, kept deliberately separate. Status colors describe a fact about a ticket. Accent describes what's interactive right now. A card can be both at once — they never merge into one color.</p>
+
+    <h3>Status — what a ticket is</h3>
+    <div class="swatch-row">
+      <div class="swatch"><div class="swatch-color" style="background:var(--pass)"></div><div class="swatch-meta"><div class="swatch-name">pass</div><div class="swatch-hex">verified / closed</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--pending)"></div><div class="swatch-meta"><div class="swatch-name">pending</div><div class="swatch-hex">medium severity, in review</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--block)"></div><div class="swatch-meta"><div class="swatch-name">block</div><div class="swatch-hex">high severity, blocked</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--dev)"></div><div class="swatch-meta"><div class="swatch-name">dev</div><div class="swatch-hex">dev-owned</div></div></div>
+    </div>
+
+    <h3>Accent — what's interactive</h3>
+    <div class="swatch-row">
+      <div class="swatch"><div class="swatch-color" style="background:var(--accent)"></div><div class="swatch-meta"><div class="swatch-name">accent</div><div class="swatch-hex">buttons, active tab, links</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--accent-strong)"></div><div class="swatch-meta"><div class="swatch-name">accent-strong</div><div class="swatch-hex">hover / pressed</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--accent-bg)"></div><div class="swatch-meta"><div class="swatch-name">accent-bg</div><div class="swatch-hex">selected row / card fill</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--accent-ring)"></div><div class="swatch-meta"><div class="swatch-name">accent-ring</div><div class="swatch-hex">focus ring glow</div></div></div>
+    </div>
+
+    <h3>Neutral scale</h3>
+    <div class="swatch-row">
+      <div class="swatch"><div class="swatch-color" style="background:var(--bg)"></div><div class="swatch-meta"><div class="swatch-name">bg</div><div class="swatch-hex">page background</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--surface)"></div><div class="swatch-meta"><div class="swatch-name">surface</div><div class="swatch-hex">cards, panels</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--ink)"></div><div class="swatch-meta"><div class="swatch-name">ink</div><div class="swatch-hex">primary text</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--line)"></div><div class="swatch-meta"><div class="swatch-name">line</div><div class="swatch-hex">borders, dividers</div></div></div>
+    </div>
+
+    <table>
+      <thead><tr><th>Token</th><th>State</th><th>Where it's used</th></tr></thead>
+      <tbody>
+        <tr><td class="role"><span class="swatch-inline" style="background:var(--accent)"></span>accent</td><td class="example">default / resting</td><td class="example">primary button fill, active tab underline, link color</td></tr>
+        <tr><td class="role"><span class="swatch-inline" style="background:var(--accent-strong)"></span>accent-strong</td><td class="example">hover / pressed</td><td class="example">button hover, selected-item text</td></tr>
+        <tr><td class="role"><span class="swatch-inline" style="background:var(--accent-bg)"></span>accent-bg</td><td class="example">selected / active</td><td class="example">selected board card, selected table row, active filter chip</td></tr>
+        <tr><td class="role"><span class="swatch-inline" style="background:var(--bg-alt)"></span>bg-alt</td><td class="example">hover only, neutral</td><td class="example">plain hover on a row/card with nothing selected — no accent involved</td></tr>
+      </tbody>
+    </table>
+
+    <div class="rule">
+      <span class="mark">→</span>
+      <p>The rule: <code>status</code> answers "what is this ticket." <code>accent</code> answers "what can I do right now / what did I just click." Never merge them — a card can be <code>pending</code> (amber tag) and <code>selected</code> (orange fill) at the same time, as two independent facts.</p>
+    </div>
+    <div class="warn">
+      <p><b>Don't:</b> reuse <code>pending</code>-amber as a hover or selected-state color just because it's visually close to orange — it reads as a severity change, not an interaction.</p>
+    </div>
+  </section>
+
+  <section id="fonts">
+    <div class="section-label">02</div>
+    <h2>Type system</h2>
+    <p class="section-sub">JetBrains Mono + Inter. One rule decides which to use: if it's typed by a person, Inter. If it's structured or generated data, JetBrains Mono.</p>
+
+    <div class="specimen">
+      <div class="specimen-head">
+        <span class="specimen-name">JetBrains Mono</span>
+        <span class="specimen-role">structured data</span>
+      </div>
+      <div class="specimen-big mono-big">TICKET-047</div>
+      <div class="specimen-alphabet" style="font-family:var(--mono);">ABCDEFGHIJKLM abcdefghijklm 0123456789</div>
+      <div class="specimen-weights">
+        <div class="weight-sample" style="font-family:var(--mono); font-weight:400;"><span class="w-label">400 regular</span>In QA · Safari 18 · macOS</div>
+        <div class="weight-sample" style="font-family:var(--mono); font-weight:500;"><span class="w-label">500 medium</span>Env: staging</div>
+        <div class="weight-sample" style="font-family:var(--mono); font-weight:600;"><span class="w-label">600 semibold</span>SEVERITY: HIGH</div>
+        <div class="weight-sample" style="font-family:var(--mono); font-weight:700;"><span class="w-label">700 bold</span>In QA</div>
+      </div>
+    </div>
+
+    <div class="specimen">
+      <div class="specimen-head">
+        <span class="specimen-name">Inter</span>
+        <span class="specimen-role" style="color:var(--dev); background:var(--dev-bg);">human-written</span>
+      </div>
+      <div class="specimen-big sans-big">Login button unresponsive</div>
+      <div class="specimen-alphabet" style="font-family:var(--sans);">ABCDEFGHIJKLM abcdefghijklm 0123456789</div>
+      <div class="specimen-weights">
+        <div class="weight-sample" style="font-family:var(--sans); font-weight:400;"><span class="w-label">400 regular</span>Steps to reproduce, comments</div>
+        <div class="weight-sample" style="font-family:var(--sans); font-weight:600;"><span class="w-label">600 semibold</span>Save changes</div>
+        <div class="weight-sample" style="font-family:var(--sans); font-weight:800;"><span class="w-label">800 extrabold</span>Reserved, use sparingly</div>
+      </div>
+    </div>
+
+    <h3>Role assignments</h3>
+    <table>
+      <thead><tr><th>Role</th><th>Font</th><th>Weight</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td class="role">Page / section titles</td><td class="example">JetBrains Mono</td><td class="example">700</td><td class="example">"Backlog," "In QA"</td></tr>
+        <tr><td class="role">Ticket IDs, timestamps, env strings</td><td class="example">JetBrains Mono</td><td class="example">500–600</td><td class="example">TICKET-047, Env: Safari 18</td></tr>
+        <tr><td class="role">Table / board data</td><td class="example">JetBrains Mono</td><td class="example">400</td><td class="example">Severity, assignee, date columns</td></tr>
+        <tr><td class="role">Body text, descriptions, comments</td><td class="example">Inter</td><td class="example">400</td><td class="example">Ticket descriptions, repro steps</td></tr>
+        <tr><td class="role">Buttons, nav, labels</td><td class="example">Inter</td><td class="example">600</td><td class="example">"Save changes," nav links</td></tr>
+      </tbody>
+    </table>
+
+    <h3>In context</h3>
+    <div class="usage-example">
+      <div class="u-id" style="font-family:var(--mono);">TICKET-047 · Env: Safari 18 · macOS</div>
+      <div class="u-title" style="font-family:var(--sans); font-weight:700;">Login button unresponsive on Safari</div>
+      <div class="u-body">Clicking "Log in" after entering valid credentials does nothing on Safari 18. No console error. Reproduced on macOS Sonoma, not reproducible on Chrome or Firefox.</div>
+    </div>
+
+    <div class="font-rule">
+      <span class="mark" style="font-family:var(--mono); font-weight:700;">→</span>
+      <p>The rule: <code>typed by a person → Inter</code>. <code>structured or generated data → JetBrains Mono</code>. Mono makes data columns align and reads as "fact." Long paragraphs in mono get tiring — keep Inter for anything a person actually wrote.</p>
+    </div>
+  </section>
+
+  <section id="pairing" style="border-bottom:none;">
+    <div class="section-label">03</div>
+    <h2>Color + font, together</h2>
+    <p class="section-sub">A quick reference for how the two systems combine on a real ticket card.</p>
+    <div class="usage-example" style="background:var(--surface); border:1px solid var(--line);">
+      <div style="display:flex; gap:8px; margin-bottom:10px;">
+        <span style="font-family:var(--mono); font-size:11px; font-weight:600; padding:4px 9px; border-radius:5px; background:var(--pending-bg); color:var(--pending);">SEVERITY: HIGH</span>
+        <span style="font-family:var(--mono); font-size:11px; font-weight:600; padding:4px 9px; border-radius:5px; background:var(--dev-bg); color:var(--dev);">DEV: OWNED</span>
+      </div>
+      <div class="u-id" style="font-family:var(--mono);">TICKET-047</div>
+      <div class="u-title" style="font-family:var(--sans); font-weight:700;">Login button unresponsive on Safari</div>
+      <div class="u-body" style="margin-bottom:12px;">Reproduced on macOS Sonoma, Safari 18. Linked to TC-112.</div>
+      <button style="font-family:var(--sans); font-weight:600; font-size:13px; background:var(--accent); color:#fff; padding:9px 16px; border-radius:7px; border:none; cursor:pointer;">Mark as verified</button>
+    </div>
+    <p class="section-sub" style="margin-top:16px;">Status chips: mono font, status color. Title and body: Inter. The one action on the card: accent-filled button, Inter label.</p>
+  </section>
+</div>
+
+<footer class="wrap">
+  <div class="foot-tag">Veridex design spec — 01 Colors &amp; Fonts</div>
+  <div class="foot-tag">Next: 02 Spacing &amp; Layout</div>
+</footer>
+
+<script>
+  const body = document.body;
+  const themeToggle = document.getElementById('theme-toggle');
+  const modeLabel = document.getElementById('mode-label');
+  themeToggle.addEventListener('click', () => {
+    const isDark = body.getAttribute('data-theme') === 'dark';
+    body.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    modeLabel.textContent = isDark ? 'light' : 'dark';
+  });
+</script>
+
+</body>
+</html>

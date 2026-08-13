@@ -1,0 +1,11 @@
+{
+    "schema_version": 2,
+    "commit": "",
+    "indexed_at": "2026-08-12T23:54:46Z",
+    "project": "veridex",
+    "nodes": 346,
+    "edges": 392,
+    "original_size": 1835008,
+    "compressed_size": 100730,
+    "compression_level": 9
+}

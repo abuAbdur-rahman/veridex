@@ -1,0 +1,40 @@
+{
+	"name": "web",
+	"private": true,
+	"version": "0.0.0",
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build": "tsc -b && vite build",
+		"lint": "oxlint",
+		"typecheck": "tsc -b --pretty false",
+		"preview": "vite preview"
+	},
+	"dependencies": {
+		"@fontsource-variable/inter": "^5.3.0",
+		"@fontsource/jetbrains-mono": "^5.3.0",
+		"@icons-pack/react-simple-icons": "^13.13.0",
+		"@tanstack/react-query": "^5.101.4",
+		"@tanstack/react-router": "^1.170.24",
+		"clsx": "^2.1.1",
+		"lucide-react": "^1.30.0",
+		"next-themes": "^0.4.6",
+		"react": "^19.2.8",
+		"react-dom": "^19.2.8",
+		"tailwind-merge": "^3.6.0",
+		"zustand": "^5.0.14"
+	},
+	"devDependencies": {
+		"@tailwindcss/vite": "^4.3.3",
+		"@tanstack/router-cli": "^1.167.26",
+		"@tanstack/router-plugin": "^1.168.28",
+		"@types/node": "^24.13.3",
+		"@types/react": "^19.2.17",
+		"@types/react-dom": "^19.2.3",
+		"@vitejs/plugin-react": "^6.0.4",
+		"oxlint": "^1.75.0",
+		"tailwindcss": "^4.3.3",
+		"typescript": "~6.0.2",
+		"vite": "^8.2.0"
+	}
+}
