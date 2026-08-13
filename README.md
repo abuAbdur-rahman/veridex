@@ -14,7 +14,7 @@ The repository currently contains the first web slice:
 - A responsive design system using Inter for human-written copy and JetBrains Mono for structured UI data.
 - Landing sections covering the spreadsheet problem, role-based workflow, MCP operation, and product features.
 
-The backend, authenticated dashboard, database, spreadsheet import, real-time updates, and MCP server are specified but are not implemented in this checkout yet.
+The backend currently contains the first health-check slice. The authenticated dashboard, database, spreadsheet import, real-time updates, and MCP server are specified but are not implemented in this checkout yet.
 
 ## Product Direction
 
@@ -51,7 +51,7 @@ veridex/
 ├── AGENTS.md                Repository-wide contributor and agent guide
 ├── README.md                Project overview and development guide
 └── apps/
-    └── web/                 Vite + React + TypeScript SPA
+    ├── web/                 Vite + React + TypeScript SPA
         ├── public/logos/    Supplied Veridex logo assets
         ├── src/components/  Landing, layout, and theme components
         ├── src/lib/         Small reusable utilities and content data
@@ -59,6 +59,9 @@ veridex/
         ├── src/routes/      TanStack Router route modules
         ├── src/index.css    Design tokens and landing styles
         └── package.json      Frontend scripts and dependencies
+    └── server/              Fastify backend
+        ├── src/             App factory, config, health route, and entry point
+        └── package.json      Backend scripts and dependencies
 ```
 
 ## Prerequisites
@@ -103,7 +106,7 @@ The planned product architecture is documented before backend implementation:
 - **Deployment target:** Railway for the backend.
 - **Testing direction:** Vitest for backend service-layer tests.
 
-The server architecture is intentionally separate from `apps/web/`. Implement it according to the specifications in `.agents/` rather than inventing a second product model.
+The backend starts with `GET /health` and is intentionally separate from `apps/web/`. Continue implementing it according to the specifications in `.agents/` rather than inventing a second product model.
 
 ## Design Rules
 

@@ -1,0 +1,24 @@
+{
+	"name": "@veridex/server",
+	"private": true,
+	"version": "0.1.0",
+	"type": "module",
+	"scripts": {
+		"dev": "tsx watch src/server.ts",
+		"build": "tsc -p tsconfig.json",
+		"start": "node dist/server.js",
+		"test": "vitest run",
+		"typecheck": "tsc -p tsconfig.json --noEmit"
+	},
+	"dependencies": {
+		"@fastify/helmet": "^13.0.2",
+		"fastify": "^5.6.1",
+		"zod": "^4.1.12"
+	},
+	"devDependencies": {
+		"@types/node": "^24.13.3",
+		"tsx": "^4.20.6",
+		"typescript": "^6.0.2",
+		"vitest": "^3.2.4"
+	}
+}
