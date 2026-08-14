@@ -10,4 +10,9 @@ export default defineConfig({
 			"@": "/src",
 		},
 	},
+	server: {
+		proxy: {
+			"/api": "http://127.0.0.1:3001",
+		},
+	},
 });

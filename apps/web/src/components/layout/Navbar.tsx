@@ -23,11 +23,11 @@ export function Navbar() {
 					<ThemeToggle />
 					<Link
 						className="hidden text-[13px] font-semibold text-[var(--ink-soft)] no-underline hover:text-[var(--accent)] sm:inline"
-						to="/auth"
+						to="/login"
 					>
 						Log in
 					</Link>
-					<Link className="btn px-3 sm:px-4" to="/auth">
+					<Link className="btn px-3 sm:px-4" to="/login">
 						Get started
 					</Link>
 				</div>

@@ -16,7 +16,7 @@ export function Hero() {
 					team run bug tracking out of a shared Excel file.
 				</p>
 				<div className="cta-row">
-					<Link className="btn" to="/auth">
+					<Link className="btn" to="/login">
 						Get started
 					</Link>
 					<a className="text-link" href="#workflow">

@@ -82,7 +82,7 @@ A design spec has already been built out (see `veridex-spec.html`) covering the 
 
 ### Two independent color systems
 - **Status colors** — describe a fact about a ticket. Never repurpose these for interaction states.
-  - `pass` (teal-green) — verified / closed
+  - `pass` (teal-green) — verified
   - `pending` (amber) — medium severity / in review
   - `block` (brick red) — high severity / blocked
   - `dev` (blue) — dev-owned

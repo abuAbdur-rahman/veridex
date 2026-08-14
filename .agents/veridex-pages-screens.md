@@ -1,6 +1,6 @@
 # Veridex — App Pages & Screens
 
-> Version: v1.1 — `/settings/tokens` replaced by `/settings/mcp` (full MCP Connection screen: config, tokens, access summary, agent activity). Mapped to app-flow.md v1.2, db-schema.md v0.5, backend-spec.md v1.4, DESIGN.md v1.0.
+> Version: v1.2 — profile screens use `/profile/settings` and `/profile/mcp`; legacy settings URLs redirect.
 
 ---
 
@@ -149,7 +149,7 @@ Each screen entry follows the same shape:
 **Data:**
 - `GET /api/me` — cached, drives team switcher (all teams user belongs to)
 - `GET /api/teams/:teamId/projects` — projects under the selected team, each annotated with the caller's `project_member.role`
-- Open issue count: aggregated server-side (`COUNT(*) WHERE status != 'closed'`)
+- Issue count: aggregated server-side across the four active lifecycle states
 **Real-time:** None on this screen — project list doesn't need live updates
 **Key components:** Project card (border, no shadow, per DESIGN.md), role badge using status-pill styling repurposed for role display
 **Empty state:** New user with only their auto-provisioned personal team and default project sees exactly one card — never a blank dashboard
@@ -511,7 +511,7 @@ Two sections: issues bounced back from QA (`in_qa → in_progress` transitions w
 
 ### 18. User settings
 
-**Route:** `/settings`
+**Route:** `/profile/settings`
 **Access:** Any authenticated user
 **Layout:**
 ```
@@ -537,7 +537,7 @@ Two sections: issues bounced back from QA (`in_qa → in_progress` transitions w
 
 ### 19. MCP Connection
 
-**Route:** `/settings/mcp`
+**Route:** `/profile/mcp`
 **Access:** Any authenticated user. User-scoped (tokens belong to the user, not a project), but the screen surfaces per-project access since that's how MCP permissions actually resolve at call time.
 **Layout:**
 ```
@@ -673,8 +673,8 @@ Full flat list for engineering ticket creation — one row per screen, cross-ref
 | 15 | Import complete | `/projects/:id/import` | qa, admin | `GET /api/import/:id/errors` |
 | 16 | Project members | `/projects/:id/members` | admin | `/api/projects/:id/members` |
 | 17 | Team members | `/teams/:id/settings` | team admin | `/api/teams/:id/members`, `/invites` |
-| 18 | User settings | `/settings` | session | `PATCH /api/me` |
-| 19 | MCP Connection | `/settings/mcp` | session | `/api/tokens`, `/api/mcp/access-summary`, `/api/mcp/activity` |
+| 18 | User settings | `/profile/settings` | session | `PATCH /api/me` |
+| 19 | MCP Connection | `/profile/mcp` | session | `/api/tokens`, `/api/mcp/access-summary`, `/api/mcp/activity` |
 
 ---
 
@@ -682,4 +682,4 @@ Full flat list for engineering ticket creation — one row per screen, cross-ref
 
 Resolved as of app-flow.md v1.2 and backend-spec.md v1.4:
 - ~~Screen 17's route was missing from the app-flow.md route map~~ — `/teams/:teamId/settings` is now listed there.
-- `/settings/tokens` (screen 19) has been superseded by `/settings/mcp`, which folds token management into a fuller connection screen. All references across documents now point to the new route.
+- Profile routes are canonical at `/profile/settings` and `/profile/mcp`; legacy `/settings` paths redirect.

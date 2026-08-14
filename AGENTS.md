@@ -63,7 +63,7 @@ Use `pnpm` for frontend dependency and script operations. Do not switch package 
 
 - One issue model supports Dev, QA, Tester, and Admin views.
 - Authorization is scoped by project membership, not by a global user role.
-- The issue lifecycle is `backlog -> in_progress -> in_qa -> verified -> closed`, with QA retesting returning issues to `in_progress`.
+- The issue lifecycle is `backlog <-> in_progress <-> in_qa <-> verified`; backward transitions require an audit note.
 - Status changes and status-history writes must be atomic when the backend is implemented.
 - MCP tokens are shown once, stored hashed, and checked against project membership and role on every tool call.
 - Spreadsheet import is a first-class MVP feature, not a generic file-upload add-on.

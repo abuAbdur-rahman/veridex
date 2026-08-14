@@ -97,7 +97,7 @@ Extracted verbatim from `veridex-spec.html`. Do not introduce new hex values wit
 
 | Token | Semantic meaning in Veridex |
 |-------|------------------------------|
-| `pass` | Issue status: `verified` / `closed`. Test case: passing. |
+| `pass` | Issue status: `verified`. Test case: passing. |
 | `pending` | Issue severity: `medium`. Import job: `pending` / `processing`. |
 | `block` | Issue severity: `high` / `critical`. Issue status: `in_progress` (blocking work). |
 | `dev` | Dev-owned indicator — assignee avatars, dev-role badge, `backlog` status neutral marker. |

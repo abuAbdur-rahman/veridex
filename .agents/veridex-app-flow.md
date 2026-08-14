@@ -1,6 +1,6 @@
 # Veridex — App Flow
 
-> Version: v1.2 — `/settings/tokens` replaced by dedicated `/settings/mcp` (connection config, access summary, agent activity feed); `source` tracking wired into the MCP surface; `/teams/:teamId/settings` route gap closed.
+> Version: v1.3 — profile screens use `/profile/settings` and `/profile/mcp`; legacy `/settings` routes redirect to the canonical profile paths.
 
 ---
 
@@ -307,11 +307,6 @@ Admin opens Project → Members → [Invite to project]
         ┌──────────┐         ┌─────────────┐
         │ Verified  │         │ In Progress  │ ← returned with note
         └──────────┘         └─────────────┘
-              │
-              ▼ (admin action)
-        ┌─────────┐
-        │  Closed  │
-        └─────────┘
 ```
 
 Every transition writes both `issues.status` and an `issue_status_history` row atomically (see backend spec Critical Gotcha #1).
@@ -321,8 +316,9 @@ Every transition writes both `issues.status` and an `issue_status_history` row a
 | `backlog` | `in_progress` |
 | `in_progress` | `in_qa`, `backlog` |
 | `in_qa` | `verified`, `in_progress` |
-| `verified` | `closed` |
-| `closed` | — (terminal) |
+| `verified` | `in_qa` |
+
+Every backward transition requires a note so progress is never erased without an audit explanation.
 
 `ticket_ref` is generated atomically on creation, scoped per project (backend spec fix #1) — e.g. `VER-001`, `VER-002`, incrementing independently for each project.
 
@@ -362,10 +358,10 @@ Every transition writes both `issues.status` and an `issue_status_history` row a
 
 ## MCP Connection Flow
 
-> Updated — token management (`/settings/tokens`) is now folded into a single dedicated screen, `/settings/mcp`, that also surfaces connection config, per-project access, and agent activity. `/settings/tokens` no longer exists as a separate route.
+> Updated — token management is folded into `/profile/mcp`, which also surfaces connection config, per-project access, and agent activity.
 
 ```
-/settings/mcp
+/profile/mcp
   │
   ├── Connection config
   │     · displays the MCP endpoint URL (public, static: PUBLIC_MCP_URL env value)
@@ -432,7 +428,7 @@ External AI agent (e.g. Claude Code in a terminal)
                         → issue_status_history row records source: 'mcp'
                         → broadcasts issue:status_changed to the project's WS room
                         → board updates live for all connected users
-                        → appears in the caller's /settings/mcp activity feed
+                        → appears in the caller's /profile/mcp activity feed
 ```
 
 An agent with a token belonging to a user who is only a member of project A cannot touch issues in project B — even if that user is the owner of the team both projects belong to. Team ownership does not imply project membership.
@@ -472,8 +468,8 @@ An agent with a token belonging to a user who is only a member of project A cann
 | `GET` | `/projects/:projectId/import` | Import flow |
 | `GET` | `/projects/:projectId/members` | Member management (admin) |
 | `GET` | `/teams/:teamId/settings` | Team members + pending invites (team admin/owner) — closes prior gap between this flow and the route map |
-| `GET` | `/settings` | User settings (username, default_role) |
-| `GET` | `/settings/mcp` | MCP connection, tokens, access summary, agent activity — replaces `/settings/tokens` |
+| `GET` | `/profile/settings` | User settings (username, default_role) |
+| `GET` | `/profile/mcp` | MCP connection, tokens, access summary, agent activity |
 
 ### API routes
 
@@ -509,8 +505,8 @@ An agent with a token belonging to a user who is only a member of project A cann
 | `GET` | `/api/tokens` | session | List own API tokens |
 | `POST` | `/api/tokens` | session | Generate new token (shown once) |
 | `DELETE` | `/api/tokens/:id` | session | Revoke token |
-| `GET` | `/api/mcp/access-summary` | session | Per-project role + available tool count for /settings/mcp |
-| `GET` | `/api/mcp/activity` | session | Recent `source: 'mcp'` status changes for /settings/mcp |
+| `GET` | `/api/mcp/access-summary` | session | Per-project role + available tool count for `/profile/mcp` |
+| `GET` | `/api/mcp/activity` | session | Recent `source: 'mcp'` status changes for `/profile/mcp` |
 | `GET` | `/ws?projectId=` | session + project member | WebSocket upgrade, scoped to project |
 | `POST` | `/mcp` | api_token bearer | MCP tool invocation |
 | `GET` | `/mcp/sse` | api_token bearer | MCP SSE stream |
