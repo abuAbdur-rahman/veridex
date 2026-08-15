@@ -16,3 +16,8 @@ coverage/
 .idea/
 .vscode/
 .zed/
+
+# Agent scratch artifacts
+backend-repair-plan.html
+backend-review.html
+veridex-stitch-prompts.md

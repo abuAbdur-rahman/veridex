@@ -1,0 +1,1 @@
+export { default as corsPlugin } from "@fastify/cors";

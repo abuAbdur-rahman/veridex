@@ -1,0 +1,1 @@
+export { default as rateLimitPlugin } from "@fastify/rate-limit";

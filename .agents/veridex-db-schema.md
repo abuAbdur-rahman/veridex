@@ -26,7 +26,7 @@
 
 ```
 PostgreSQL 17+
-├── auth (schema)     — owned by Better Auth CLI migrations
+├── auth (schema)     — owned by Drizzle migrations
 │   ├── user          — extended with username + default_role
 │   ├── session
 │   ├── account
@@ -49,7 +49,7 @@ PostgreSQL 17+
 
 ### ⚠️ Cross-schema FK constraint limitation
 
-Every column referencing `auth.user.id` in this document is written as "FK → auth.user.id" for documentation clarity, but **none of these are enforced as actual database foreign key constraints**. Better Auth's schema lives in the `auth` PG schema and is migrated by the Better Auth CLI; Veridex tables live in `public` and are migrated by Drizzle. Drizzle-kit cannot generate a working FK constraint across two independently-migrated schemas without manual SQL intervention that breaks on every `db:generate`.
+Every column referencing `auth.user.id` in this document is written as "FK → auth.user.id" for documentation clarity, but **none of these are enforced as database foreign keys**. Drizzle owns migrations for both the `auth` and `public` schemas, but Veridex deliberately keeps application user references unconstrained at the database layer so Better Auth remains the authority for user lifecycle behavior.
 
 **These relationships are enforced at the application layer only:**
 - Every write to a user-referencing column is validated against an active session (the ID came from an authenticated request — it is trustworthy by construction).
@@ -70,7 +70,7 @@ reporterId: text('reporter_id').notNull(), // FK → auth.user.id (app-level onl
 CREATE TYPE team_role      AS ENUM ('owner', 'admin', 'member');
 CREATE TYPE project_role   AS ENUM ('dev', 'qa', 'tester', 'admin');
 CREATE TYPE issue_severity AS ENUM ('low', 'medium', 'high', 'critical');
-CREATE TYPE issue_status   AS ENUM ('backlog', 'in_progress', 'in_qa', 'verified', 'closed');
+CREATE TYPE issue_status   AS ENUM ('backlog', 'in_progress', 'in_qa', 'verified');
 CREATE TYPE import_status  AS ENUM ('pending', 'processing', 'completed', 'failed');
 CREATE TYPE file_type      AS ENUM ('xlsx', 'csv');
 CREATE TYPE change_source  AS ENUM ('web', 'mcp', 'import');
@@ -80,7 +80,7 @@ CREATE TYPE change_source  AS ENUM ('web', 'mcp', 'import');
 
 ## Auth Layer — Better Auth
 
-Managed exclusively via `pnpm auth generate` / `pnpm auth migrate`. Do not hand-write migrations for these.
+Managed exclusively through the Drizzle schema and forward migrations in `apps/server/src/db/migrations/`. Better Auth's migration CLI is not used.
 
 ### `user` (Better Auth base + Veridex extensions)
 
@@ -482,7 +482,7 @@ Postgres `SEQUENCE` objects are global and don't reset per project. A counter co
 `invites` grants team access via email + token, single-use, expiring. `api_tokens` grants API access via bearer token, long-lived, revocable, scoped to a user (not a team). Different lifecycle, different security model — conflating them would create either an over-privileged invite system or an under-featured token system.
 
 ### Why cross-schema FKs are documented but not DB-enforced
-This is a deliberate tradeoff, not an oversight. The alternative — hand-writing raw SQL migrations outside Drizzle-kit's generation flow to add the constraint — creates a maintenance trap where every `drizzle-kit generate` risks conflicting with or dropping the manually-added constraint. Application-level enforcement (validating against an active session before any write) is the correct pattern for cross-schema references in a split-ownership migration setup like this one.
+This is a deliberate tradeoff, not an oversight. Application-level enforcement keeps user IDs sourced from validated sessions and avoids coupling Veridex tables to Better Auth's user-deletion behavior. Drizzle remains the sole migration owner for both schemas.
 
 ---
 

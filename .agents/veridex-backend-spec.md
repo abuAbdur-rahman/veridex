@@ -13,7 +13,7 @@
 | API design | REST + OpenAPI (Zod-derived, `fastify-type-provider-zod`) |
 | ORM | Drizzle |
 | Database (prod) | Neon — pooled string for runtime, unpooled for migrations + pg-boss |
-| Database (local) | Docker + PostgreSQL 17 Alpine |
+| Database (local) | Installed PostgreSQL 17+ or optional PostgreSQL 17 Compose service |
 | File storage | Cloudflare R2 (S3-compatible) |
 | Job queue | pg-boss (Postgres-backed, unpooled connection) |
 | Auth | Better Auth, mounted on Fastify via `toNodeHandler` |
@@ -276,7 +276,7 @@ CSV files have no cell color data — `.csv` imports always fall through to the 
 
 ```
 veridex/
-├── docker-compose.yml
+├── compose.yaml
 └── apps/
     └── server/
         └── src/
@@ -297,7 +297,7 @@ veridex/
             │   ├── import.ts
             │   ├── test-cases.ts
             │   ├── api-tokens.ts     ← new — create/revoke MCP tokens
-            │   └── mcp.ts            ← new — access-summary + activity feed for /settings/mcp
+            │   └── mcp.ts            ← new — access-summary + activity feed for /profile/mcp
             ├── services/
             │   ├── team.service.ts
             │   ├── invite.service.ts ← new
@@ -374,7 +374,7 @@ Response shape: `{ error: { code, message, details? } }` — consistent across R
 
 ## Local Development
 
-### `docker-compose.yml`
+### Optional `compose.yaml`
 
 ```yaml
 version: '3.8'
@@ -384,7 +384,7 @@ services:
     container_name: veridex_postgres
     restart: unless-stopped
     ports:
-      - '5432:5432'
+      - '${POSTGRES_PORT:-5432}:5432'
     environment:
       POSTGRES_USER: veridex
       POSTGRES_PASSWORD: veridex
@@ -403,8 +403,12 @@ volumes:
 
 ### Local env vars
 
+Installed PostgreSQL is the primary local workflow; Docker is not required. The optional Compose service uses the same direct URL, with `POSTGRES_PORT` reflected in the URL when overridden.
+
 ```bash
-# Local: both point to the same DB — no PgBouncer in Docker
+WEB_ORIGIN=http://localhost:5173
+
+# Local: both point to the same direct database URL.
 DATABASE_URL=postgresql://veridex:veridex@localhost:5432/veridex_dev
 DATABASE_URL_UNPOOLED=postgresql://veridex:veridex@localhost:5432/veridex_dev
 
@@ -428,22 +432,15 @@ NODE_ENV=development
 
 ---
 
-## Fix #13 — Migration Ordering
+## Drizzle Migration Ownership
 
-Better Auth migrations (auth schema) must run before Drizzle migrations, since the app assumes `auth.user` exists even though no DB-level FK enforces it. Sequenced via a root script:
-
-```json
-// package.json (root)
-{
-  "scripts": {
-    "db:migrate": "pnpm auth migrate && pnpm --filter @veridex/db db:migrate"
-  }
-}
-```
+Drizzle is the sole migration owner for both `auth.*` and public tables. Run the server migration command, which uses `DATABASE_URL_UNPOOLED`:
 
 ```bash
-pnpm db:migrate   # always run this — never run the two migration commands separately
+pnpm --dir apps/server db:migrate
 ```
+
+Do not run Better Auth migration commands or rewrite applied Drizzle migrations. Production uses Neon's direct URL for this command. The same direct URL will serve the planned pg-boss runner when jobs are implemented.
 
 ---
 
@@ -508,7 +505,7 @@ Every tool call resolves `project_member.role` for the caller against the target
 
 ## MCP Connection Page Support
 
-Three additions needed to power the `/settings/mcp` frontend screen.
+Three additions needed to power the `/profile/mcp` frontend screen.
 
 ### 1. Access summary endpoint
 
