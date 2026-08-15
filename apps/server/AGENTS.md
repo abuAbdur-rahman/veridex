@@ -11,7 +11,7 @@ Read in this order before changing server behavior:
 1. Root [`AGENTS.md`](../../AGENTS.md) — repository-wide rules.
 2. [`.agents/veridex-backend-spec.md`](../../.agents/veridex-backend-spec.md) — runtime behavior, error shape, gotchas.
 3. [`.agents/veridex-db-schema.md`](../../.agents/veridex-db-schema.md) — table contracts and constraints.
-4. [`.agents/tasks/server/`](../../.agents/tasks/server/) — active work plan.
+4. [`.agents/states/server.md`](../../.agents/states/server.md) — current server handoff state.
 
 When two documents disagree, resolve in the most specific one before coding.
 

@@ -1,10 +1,10 @@
 # Server State
 
-Last updated: 2026-08-13
+Last updated: 2026-08-15
 
 ## Current Boundary
 
-The backend foundation and onboarding vertical slice are implemented in `apps/server/`. No teams/invites CRUD, general projects CRUD, issue workflows, WebSockets, spreadsheet import, API tokens, or MCP tools are implemented yet.
+The backend foundation and onboarding vertical slice are implemented and committed in `apps/server/`. No teams/invites CRUD, general projects CRUD, issue workflows, WebSockets, spreadsheet import, API tokens, or MCP tools are implemented yet.
 
 The active implementation plan is sourced from:
 
@@ -12,19 +12,19 @@ The active implementation plan is sourced from:
 2. `.agents/veridex-backend-spec.md`
 3. `.agents/veridex-db-schema.md`
 4. `.agents/veridex-app-flow.md`
-5. `.agents/tasks/server/`
 
 ## Implemented Foundation
 
-- Fastify application factory and server entry point.
-- Environment validation.
-- Helmet, CORS, rate limiting, Swagger, Better Auth, and health plugins/routes.
-- Shared error envelope: `{ error: { code, message, details? } }`.
-- Better Auth Drizzle adapter and optional Google/GitHub providers.
-- Session and project-role authorization helpers.
+- Fastify application factory and server entry point, with configurable `trustProxy`.
+- Zod-validated environment contract (`TRUST_PROXY`, trimmed `R2_BUCKET_NAME`, OAuth pairing checks).
+- Helmet, CORS, rate limiting, Swagger (non-production), Better Auth, and health plugins/routes.
+- Shared error envelope: `{ error: { code, message, details? } }`. Fastify schema failures and manual Zod failures both surface as `422 VALIDATION_ERROR`.
+- Better Auth Drizzle adapter with optional Google/GitHub providers and `useSecureCookies` in production only.
+- Session and project-role authorization helpers; `requireProjectRole` validates `projectId` as a UUID before querying.
 - Drizzle schema for all planned auth and public tables.
-- Migrations `0000` through `0004`.
+- Migrations `0000` through `0005`.
 - `GET /health`.
+- `GET /api/me` returns a session projection (`{ id, expiresAt, userId }`); the raw auth token is never exposed.
 
 ## Implemented Onboarding Slice
 
@@ -37,7 +37,7 @@ Routes:
 
 - `GET /api/me`
   - Requires a Better Auth session.
-  - Returns session, current user, team memberships, and `hasPersonalTeam`.
+  - Returns the projected session, current user, team memberships, and `hasPersonalTeam`.
 - `GET /api/users/check-username?q=`
   - Requires a session.
   - Normalizes to trimmed lowercase.
@@ -62,16 +62,11 @@ Provisioning uses one Drizzle/PostgreSQL transaction:
 
 ## Database State
 
-Verified through the `psql` CLI:
-
-- `drizzle.__drizzle_migrations` contains five rows for migrations `0000` through `0004`.
+- `drizzle.__drizzle_migrations` contains six rows for migrations `0000` through `0005`.
+- Migration `0005` removes `'closed'` from the `issue_status` enum, matching the product lifecycle `backlog <-> in_progress <-> in_qa <-> verified`. The `issues.closed_at` column remains per the spec.
 - `auth.user`, `team`, `team_member`, `project`, and `project_member` exist.
 - `user_username_unique`, `user_default_role_check`, `team_slug_unique`, and `project_team_slug_unique` exist.
 - Query-driven indexes from the repair migrations exist.
-- A transaction smoke test successfully created the complete onboarding graph and rolled it back.
-- No audit rows remain after the smoke test.
-
-The current development database had zero real users, teams, projects, or memberships at the time of verification.
 
 ## Tests And Verification
 
@@ -81,21 +76,24 @@ Current verified commands from `apps/server/`:
 pnpm test
 pnpm typecheck
 pnpm build
+pnpm db:generate   # after any schema change, then review the migration SQL
 pnpm db:migrate
 ```
 
 Latest results:
 
-- Vitest: 7 files, 54 tests passed.
+- Vitest: 7 files, 64 tests passed.
 - Typecheck: passed.
 - Build: passed.
-- Migration apply and clean rerun: passed.
-- `git diff --check`: passed.
 
 Focused tests:
 
 - `apps/server/src/routes/onboarding.test.ts`
 - `apps/server/src/services/onboarding.service.test.ts`
+- `apps/server/src/lib/auth.test.ts`
+- `apps/server/src/config.test.ts`
+- `apps/server/src/app.test.ts`
+- `apps/server/src/auth/index.test.ts`
 
 Rollback and concurrency behavior currently use a stateful transaction double. Add a dedicated real-PostgreSQL integration-test harness before relying on these tests as full transaction/concurrency proof.
 
@@ -103,7 +101,7 @@ Rollback and concurrency behavior currently use a stateful transaction double. A
 
 Completed task:
 
-- `.agents/tasks/server/01-onboarding-vertical-slice.md`
+- Server onboarding vertical slice (migrations `0002`–`0004`, `GET /api/me`, `GET /api/users/check-username`, `POST /api/onboarding/complete`), committed in `dc94eaf` and verified with 64 passing tests.
 
 ## Next Recommended Slice
 
@@ -116,8 +114,4 @@ Implement teams and invites, while reusing the established route/service/session
 - `GET /api/invites/:token/validate`
 - `POST /api/invites/:token/accept`
 
-Create the next task file under `.agents/tasks/server/` before implementation. Invite acceptance must create membership and mark the invite accepted atomically, with authorization scoped to team membership and role.
-
-## Working Tree Note
-
-The repository contains broad pre-existing uncommitted work across server and web files. Do not revert unrelated changes. The onboarding files and server task directory are currently untracked or part of the broader dirty working tree.
+Invite acceptance must create membership and mark the invite accepted atomically, with authorization scoped to team membership and role.

@@ -1,6 +1,6 @@
 # Veridex Frontend Handoff
 
-Updated: 2026-08-14
+Updated: 2026-08-15
 
 ## Current State
 
@@ -37,7 +37,7 @@ From `apps/web/`:
 
 ## Remaining Backend Work
 
-- Align backend DB enum/migrations and issue service transition rules with the frontend four-state lifecycle. Existing server schema/migration still contains `closed` and must be migrated deliberately.
+- Align backend issue service transition rules with the frontend four-state lifecycle. The server enum/migrations now match (`backlog`, `in_progress`, `in_qa`, `verified`; migration `0005` removes `closed`).
 - Implement real auth/session guards, Better Auth integration, API persistence, WebSockets, import parsing/jobs, membership authorization, MCP token hashing, and server-side validation.
 - Replace Zustand demo actions with TanStack Query/API mutations without changing screen contracts.
 

@@ -6,15 +6,14 @@ The product is based on a real workflow problem: shared spreadsheets hide status
 
 ## Current Status
 
-The repository currently contains the first web slice:
+The frontend is a fixture-backed, functional issue-tracking application:
 
-- A Vite + React + TypeScript public landing page.
-- A themed authentication presentation route at `/auth`.
+- A Vite + React + TypeScript SPA with a public landing page.
+- Authenticated issue-management UI: a shared app shell, Kanban board with the four-state lifecycle, issue create/detail/update, role workflows, and profile settings.
 - Light and dark themes with persisted theme selection.
 - A responsive design system using Inter for human-written copy and JetBrains Mono for structured UI data.
-- Landing sections covering the spreadsheet problem, role-based workflow, MCP operation, and product features.
 
-The backend foundation is in place: a Fastify app factory with plugin layout, Zod-validated env contract, typed error handling, project membership authorization, graceful database shutdown, and the full Drizzle schema (enums + 13 public tables plus 4 auth tables) with forward migrations. The authenticated dashboard, spreadsheet import, real-time updates, and MCP server are specified but not yet implemented.
+The backend foundation and onboarding slice are implemented and committed: a Fastify app factory with plugin layout, Zod-validated env contract, shared error envelope, Better Auth (Drizzle adapter, production-secure cookies), session and project-role authorization, rate limiting, Swagger, and the full Drizzle schema (enums + 13 public tables plus 4 auth tables) with forward migrations `0000`–`0005`. Live backend integration for the dashboard, spreadsheet import, real-time updates, and the MCP server are specified but not yet implemented.
 
 ## Product Direction
 
@@ -46,7 +45,8 @@ Core planned capabilities:
 
 ```text
 veridex/
-├── .agents/                 Product, design, architecture, and implementation specs
+├── .agents/                 Product, design, architecture, implementation specs,
+│                            task plans, and per-app agent state files
 ├── .codebase-memory/        Persistent codebase graph artifact
 ├── AGENTS.md                Repository-wide contributor and agent guide
 ├── README.md                Project overview and development guide
@@ -66,7 +66,7 @@ veridex/
         │   ├── db/           Drizzle client, schema, generated migrations
         │   ├── lib/          Typed errors, auth helpers (session + project roles)
         │   ├── plugins/      helmet, cors, rate-limit, swagger, auth
-        │   └── routes/       Health route (more land per-task)
+        │   └── routes/       Health and onboarding routes
         ├── drizzle.config.ts Drizzle-kit config (uses DATABASE_URL_UNPOOLED)
         └── package.json      Backend scripts and dependencies
 ```
@@ -87,10 +87,7 @@ pnpm install
 pnpm dev
 ```
 
-Open the local URL printed by Vite. The implemented routes are:
-
-- `/` — public landing page.
-- `/auth` — authentication presentation screen; OAuth actions are visual placeholders until the backend is added.
+Open the local URL printed by Vite. The implemented routes include the public landing page at `/`, the auth presentation screen at `/auth`, and the fixture-backed authenticated app shell with the board, issue details, and profile settings.
 
 ## Backend Setup
 
@@ -180,8 +177,7 @@ The `.agents/` directory is the source for product intent and planned architectu
 - [`.agents/veridex-pages-screens.md`](.agents/veridex-pages-screens.md) — screen-level UX and data requirements.
 - [`.agents/veridex-db-schema.md`](.agents/veridex-db-schema.md) — PostgreSQL entities, constraints, indexes, and transaction rules.
 - [`.agents/veridex-backend-spec.md`](.agents/veridex-backend-spec.md) — Fastify backend, auth, WebSockets, imports, MCP, local development, and testing plan.
-- [`.agents/tasks/setup-veridex-web.md`](.agents/tasks/setup-veridex-web.md) — web setup goal, constraints, acceptance checks, and current phase status.
-- [`.agents/tasks/server/`](.agents/tasks/server/) — backend task-by-task work plan (T01–T14).
+- [`.agents/states/`](.agents/states/) — per-app agent state files (`web.md`, `server.md`) for cross-session handoff.
 - [`.agents/veridex.html`](.agents/veridex.html) — original landing-page reference.
 - [`.agents/veridex-spec.html`](.agents/veridex-spec.html) — original color and typography reference.
 

@@ -18,6 +18,10 @@ Use these documents in this order:
 
 When two specifications disagree, stop and resolve the conflict in the most specific document before coding. Do not silently invent behavior.
 
+## Agent State
+
+Per-app cross-session state files live in `.agents/states/` (`web.md`, `server.md`). Update the relevant file when you finish a slice so the next session can pick up where you left off.
+
 ## Repository Scope
 
 Current implementation lives in `apps/web/`. The product and backend specifications describe planned work; they are not evidence that those modules already exist.
