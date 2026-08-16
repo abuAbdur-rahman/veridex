@@ -9,7 +9,6 @@ const testEnvironment: Environment = {
 	PORT: 3001,
 	NODE_ENV: "test",
 	WEB_ORIGIN: "http://localhost:5173",
-	PUBLIC_MCP_URL: "http://localhost:3001/mcp",
 	DATABASE_URL: "postgresql://veridex:veridex@localhost:5432/veridex_dev",
 	DATABASE_URL_UNPOOLED:
 		"postgresql://veridex:veridex@localhost:5432/veridex_dev",

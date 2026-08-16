@@ -16,7 +16,7 @@ The active implementation plan is sourced from:
 ## Implemented Foundation
 
 - Fastify application factory and server entry point, with configurable `trustProxy`.
-- Zod-validated environment contract (`TRUST_PROXY`, trimmed `R2_BUCKET_NAME`, OAuth pairing checks).
+- Zod-validated environment contract (`TRUST_PROXY`, PostgreSQL-only database URLs, trimmed `R2_BUCKET_NAME`, OAuth pairing checks). `PUBLIC_MCP_URL` remains planned configuration until MCP tools are implemented.
 - Helmet, CORS, rate limiting, Swagger (non-production), Better Auth, and health plugins/routes.
 - Shared error envelope: `{ error: { code, message, details? } }`. Fastify schema failures and manual Zod failures both surface as `422 VALIDATION_ERROR`.
 - Better Auth Drizzle adapter with optional Google/GitHub providers and `useSecureCookies` in production only.
@@ -82,7 +82,7 @@ pnpm db:migrate
 
 Latest results:
 
-- Vitest: 7 files, 64 tests passed.
+- Vitest: 7 files, 69 tests passed.
 - Typecheck: passed.
 - Build: passed.
 
@@ -102,6 +102,7 @@ Rollback and concurrency behavior currently use a stateful transaction double. A
 Completed task:
 
 - Server onboarding vertical slice (migrations `0002`–`0004`, `GET /api/me`, `GET /api/users/check-username`, `POST /api/onboarding/complete`), committed in `dc94eaf` and verified with 64 passing tests.
+- Server maintenance: aligned Vitest coverage tooling, restricted database URL schemes, documented planned MCP configuration, and limited the optional Compose database port to host loopback.
 
 ## Next Recommended Slice
 

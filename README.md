@@ -75,7 +75,7 @@ veridex/
 
 - Node.js LTS.
 - `pnpm`.
-- PostgreSQL 17 or newer. Installed PostgreSQL 18 is the primary local workflow; Docker Compose is an optional contributor workflow.
+- PostgreSQL 17 or newer. Installed PostgreSQL is the primary local workflow; Docker Compose is an optional contributor workflow.
 
 The landing experience runs without a database or backend env vars. Backend work requires the local Postgres role/database described in [Backend Setup](#backend-setup).
 
@@ -92,7 +92,7 @@ Open the local URL printed by Vite. The implemented routes include the public la
 ## Backend Setup
 
 ```bash
-# 1. Create the local Postgres 18 role and database (once)
+# 1. Create the local PostgreSQL 17+ role and database (once)
 createuser -P veridex            # password: veridex
 createdb -O veridex veridex_dev
 

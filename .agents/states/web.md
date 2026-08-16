@@ -38,7 +38,7 @@ From `apps/web/`:
 ## Remaining Backend Work
 
 - Align backend issue service transition rules with the frontend four-state lifecycle. The server enum/migrations now match (`backlog`, `in_progress`, `in_qa`, `verified`; migration `0005` removes `closed`).
-- Implement real auth/session guards, Better Auth integration, API persistence, WebSockets, import parsing/jobs, membership authorization, MCP token hashing, and server-side validation.
+- Integrate the implemented Better Auth session, onboarding, and project-role foundations with the frontend. Teams/invites CRUD, issue API persistence, WebSockets, import parsing/jobs, API token hashing, MCP tools, and their route-level authorization remain unimplemented.
 - Replace Zustand demo actions with TanStack Query/API mutations without changing screen contracts.
 
 ## Do Not Regress

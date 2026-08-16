@@ -58,7 +58,7 @@ apps/server/
 ## Local setup
 
 ```bash
-# Postgres 18 must be installed and running (psql --version >= 18)
+# PostgreSQL 17+ must be installed and running
 createuser -P veridex        # password: veridex
 createdb -O veridex veridex_dev
 

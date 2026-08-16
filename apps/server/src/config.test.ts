@@ -40,6 +40,38 @@ describe("parseEnvironment", () => {
 		).toThrow();
 	});
 
+	it.each(["postgres://user:password@localhost:5432/veridex", "postgresql://user:password@localhost:5432/veridex"])(
+		"accepts PostgreSQL database URL %s",
+		(databaseUrl) => {
+			expect(() =>
+				parseEnvironment({
+					...validEnvironment,
+					DATABASE_URL: databaseUrl,
+					DATABASE_URL_UNPOOLED: databaseUrl,
+				}),
+			).not.toThrow();
+		},
+	);
+
+	it.each([
+		"https://localhost:5432/veridex",
+		"mysql://user:password@localhost:3306/veridex",
+		"not-a-url",
+	])("rejects unsupported database URL %s", (databaseUrl) => {
+		expect(() =>
+			parseEnvironment({
+				...validEnvironment,
+				DATABASE_URL: databaseUrl,
+			}),
+		).toThrow();
+		expect(() =>
+			parseEnvironment({
+				...validEnvironment,
+				DATABASE_URL_UNPOOLED: databaseUrl,
+			}),
+		).toThrow();
+	});
+
 	it.each([
 		[undefined, undefined],
 		["google-id", "google-secret"],

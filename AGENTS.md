@@ -24,9 +24,9 @@ Per-app cross-session state files live in `.agents/states/` (`web.md`, `server.m
 
 ## Repository Scope
 
-Current implementation lives in `apps/web/`. The product and backend specifications describe planned work; they are not evidence that those modules already exist.
+Current implementation lives in `apps/web/` and `apps/server/`. The server foundation and onboarding slice exist; consult `.agents/states/server.md` for the exact boundary between implemented and planned backend work.
 
-Keep application files inside their owning directory. Frontend code belongs in `apps/web/`; backend code belongs in `apps/server/`. Future database, auth, job, and MCP code should follow the placements described in `.agents/veridex-backend-spec.md` and `.agents/veridex-db-schema.md`.
+Keep application files inside their owning directory. Frontend code belongs in `apps/web/`; backend code belongs in `apps/server/`. New database, auth, job, and MCP code should follow the placements described in `.agents/veridex-backend-spec.md` and `.agents/veridex-db-schema.md`.
 
 ## Frontend Commands
 
@@ -73,9 +73,9 @@ Use `pnpm` for frontend dependency and script operations. Do not switch package 
 - Spreadsheet import is a first-class MVP feature, not a generic file-upload add-on.
 - Do not add notifications, multi-workspace support, complex permissions, or generic AI features without updating scope documentation first.
 
-## Backend Rules For Planned Work
+## Backend Rules
 
-Follow `.agents/veridex-backend-spec.md` and `.agents/veridex-db-schema.md` when server code is introduced:
+Follow `.agents/veridex-backend-spec.md` and `.agents/veridex-db-schema.md` for implemented and planned server code:
 
 - Use Fastify, REST/OpenAPI, Zod, Drizzle, Better Auth, WebSockets, pg-boss, and the planned MCP SDK stack.
 - Use pooled `DATABASE_URL` for runtime queries and unpooled `DATABASE_URL_UNPOOLED` for migrations and pg-boss.

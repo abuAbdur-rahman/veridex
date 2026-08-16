@@ -44,6 +44,16 @@ const httpOrigin = z
 	})
 	.transform((value) => new URL(value).origin);
 
+const postgresUrl = z.string().url().superRefine((value, context) => {
+	const protocol = new URL(value).protocol;
+	if (protocol === "postgres:" || protocol === "postgresql:") return;
+
+	context.addIssue({
+		code: "custom",
+		message: "Must be a PostgreSQL connection URL",
+	});
+});
+
 const oauthProviderPairs = [
 	["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
 	["GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET"],
@@ -57,9 +67,8 @@ const environmentSchema = z
 			.enum(["development", "test", "production"])
 			.default("development"),
 		WEB_ORIGIN: httpOrigin,
-		PUBLIC_MCP_URL: z.string().url().default("http://localhost:3001/mcp"),
-		DATABASE_URL: z.string().url(),
-		DATABASE_URL_UNPOOLED: z.string().url(),
+		DATABASE_URL: postgresUrl,
+		DATABASE_URL_UNPOOLED: postgresUrl,
 		BETTER_AUTH_SECRET: z.string().min(16),
 		BETTER_AUTH_URL: z.string().url(),
 		GOOGLE_CLIENT_ID: optionalTrimmedString,

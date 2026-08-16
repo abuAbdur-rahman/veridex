@@ -384,7 +384,7 @@ services:
     container_name: veridex_postgres
     restart: unless-stopped
     ports:
-      - '${POSTGRES_PORT:-5432}:5432'
+      - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
     environment:
       POSTGRES_USER: veridex
       POSTGRES_PASSWORD: veridex
@@ -403,7 +403,7 @@ volumes:
 
 ### Local env vars
 
-Installed PostgreSQL is the primary local workflow; Docker is not required. The optional Compose service uses the same direct URL, with `POSTGRES_PORT` reflected in the URL when overridden.
+Installed PostgreSQL is the primary local workflow; Docker is not required. The optional Compose service binds PostgreSQL to host loopback only and uses the same direct URL, with `POSTGRES_PORT` reflected in the URL when overridden.
 
 ```bash
 WEB_ORIGIN=http://localhost:5173
