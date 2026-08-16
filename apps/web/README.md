@@ -2,7 +2,7 @@
 
 The `apps/web/` package is the current Vite + React + TypeScript frontend for Veridex, a QA-aware issue tracker designed to replace spreadsheet-based bug tracking.
 
-The implemented slice is a responsive public landing page plus an authentication presentation screen. The dashboard, API integration, and authenticated issue-management flows are planned in the repository specifications but are not implemented yet.
+The implemented slice is a fixture-backed, functional issue-tracking application: a responsive public landing page, an auth presentation screen, and an authenticated app shell with a Kanban board (four-state lifecycle), issue create/detail/update, role workflows, and profile settings. Live backend integration and the spreadsheet import, real-time updates, and MCP flows are planned in the repository specifications but are not implemented yet.
 
 ## Stack
 
@@ -35,6 +35,7 @@ Vite prints the local development URL after startup.
 
 - `/` — public landing page with the product story, workflow, MCP callout, and feature sections.
 - `/auth` — authentication presentation screen with Google and GitHub UI actions. These buttons are not connected to an authentication backend yet.
+- `/login`, the authenticated app shell, the Kanban board, issue detail, and profile routes — fixture-backed until the backend API is wired in.
 
 ## Scripts
 
@@ -59,12 +60,16 @@ pnpm build
 ```text
 src/
 ├── components/
+│   ├── app/           Authenticated shell, board, kanban card/column
 │   ├── landing/       Landing sections and spreadsheet-to-ticket visual
 │   ├── layout/        Navbar, footer, and logo
-│   └── theme/         Theme toggle
-├── lib/               Reusable utilities and landing content data
+│   ├── screens/       Route-level screens (board, issue detail, settings)
+│   ├── theme/         Theme toggle
+│   └── ui/            Shared visual primitives
+├── lib/               Reusable utilities, demo store, content data
 ├── providers/         App-wide providers
 ├── routes/            TanStack Router route modules
+├── test/              Test setup and helpers
 ├── index.css          Design tokens and landing stylesheet
 ├── main.tsx           Browser entry point
 └── router.tsx         Typed router instance
@@ -87,6 +92,6 @@ Read [`DESIGN.md`](DESIGN.md) before changing visual behavior. The main rules ar
 
 - [`../README.md`](../README.md) — project overview, current status, roadmap, and architecture.
 - [`AGENTS.md`](AGENTS.md) — frontend-local contributor and agent rules.
-- [`../.agents/tasks/setup-veridex-web.md`](../.agents/tasks/setup-veridex-web.md) — setup task and acceptance checks.
+- [`../.agents/states/web.md`](../.agents/states/web.md) — frontend handoff state for cross-session work.
 - [`../.agents/veridex-app-flow.md`](../.agents/veridex-app-flow.md) — planned routes and product flows.
 - [`../.agents/veridex-pages-screens.md`](../.agents/veridex-pages-screens.md) — planned screen requirements.

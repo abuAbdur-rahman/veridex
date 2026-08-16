@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1786635140588,
+      "tag": "0000_numerous_the_phantom",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786639345794,
+      "tag": "0001_past_richard_fisk",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786725275021,
+      "tag": "0002_normalize_auth_users",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786725321661,
+      "tag": "0003_repair_auth_and_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786725668651,
+      "tag": "0004_repair_auth_and_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786772434591,
+      "tag": "0005_awesome_mesmero",
+      "breakpoints": true
+    }
+  ]
+}
