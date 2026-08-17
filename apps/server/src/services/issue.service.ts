@@ -30,6 +30,7 @@ export interface CreateIssueInput {
 	stepsToReproduce?: string;
 	expectedResult?: string;
 	actualResult?: string;
+	imageUrl?: string;
 	assigneeId?: string;
 	qaAssigneeId?: string;
 	testCaseId?: string;
@@ -49,6 +50,7 @@ export interface UpdateIssueInput {
 	stepsToReproduce?: string;
 	expectedResult?: string;
 	actualResult?: string;
+	imageUrl?: string | null;
 	assigneeId?: string | null;
 	qaAssigneeId?: string | null;
 	testCaseId?: string | null;
@@ -150,6 +152,7 @@ export async function createIssue(
 					stepsToReproduce: input.stepsToReproduce ?? null,
 					expectedResult: input.expectedResult ?? null,
 					actualResult: input.actualResult ?? null,
+					imageUrl: input.imageUrl ?? null,
 					assigneeId: input.assigneeId ?? null,
 					qaAssigneeId: input.qaAssigneeId ?? null,
 					testCaseId: input.testCaseId ?? null,

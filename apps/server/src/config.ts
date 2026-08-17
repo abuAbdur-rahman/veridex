@@ -92,6 +92,20 @@ const environmentSchema = z
 				message: `${idKey} and ${secretKey} must be configured together`,
 			});
 		}
+
+		const r2Keys = ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"] as const;
+		const configuredR2Keys = r2Keys.filter((key) => Boolean(environment[key]));
+		if (configuredR2Keys.length > 0 && configuredR2Keys.length < r2Keys.length) {
+			for (const key of r2Keys) {
+				if (!environment[key]) {
+					context.addIssue({
+						code: "custom",
+						path: [key],
+						message: "R2 account ID and credentials must be configured together",
+					});
+				}
+			}
+		}
 	});
 
 export type Environment = z.infer<typeof environmentSchema>;

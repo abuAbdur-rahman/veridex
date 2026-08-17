@@ -1,6 +1,6 @@
 # Veridex Frontend Handoff
 
-Updated: 2026-08-17
+Updated: 2026-08-18
 
 ## Current State
 
@@ -34,8 +34,10 @@ These drive dashboard/sidebar project lists, project creation, project resolutio
 - `PATCH /api/projects/:projectId/issues/:issueId/status`
 - `PATCH /api/projects/:projectId/issues/:issueId/assign`
 - `GET /api/projects/:projectId/issues/:issueId/history`
+- `POST /api/projects/:projectId/issue-images`
+- `GET /api/projects/:projectId/issue-images/:key`
 
-These drive search/list views, report form, detail/edit, workflow transitions, developer/QA assignment, status history, and admin deletion. `server-mappers.ts` resolves ID-only issue fields against project-member projections for display.
+These drive search/list views, report form, detail/edit, workflow transitions, developer/QA assignment, status history, and admin deletion. `server-mappers.ts` resolves ID-only issue fields against project-member projections for display. Image uploads flow through `uploadIssueImage` (multipart) and the create mutation, accepting a single PNG/JPEG/WebP file up to 5 MB and an external HTTPS URL via the form's "Issue image" tab. The `IssueDetailPanel` exposes a "View image" button only when `issue.imageUrl` is set, opening a fullscreen dialog with an explicit close control.
 
 ## Key Files
 
@@ -55,7 +57,7 @@ Run from `apps/web/`:
 
 - `pnpm typecheck` – passed.
 - `pnpm lint` – passed.
-- `pnpm test` – passed: 38 tests across 11 files.
+- `pnpm test` – passed: 38 tests across 11 files (including image URL adapters and report form coverage).
 - `pnpm build` – passed.
 - Build warning remains: main JS chunk approximately 705 KB before gzip; route splitting is future optimization.
 

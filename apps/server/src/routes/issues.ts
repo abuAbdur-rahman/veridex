@@ -15,6 +15,15 @@ import {
 
 const projectParamsSchema = z.object({ projectId: z.string().uuid() });
 const issueParamsSchema = z.object({ issueId: z.string().uuid() });
+const internalImageUrlPattern = /^\/api\/projects\/[0-9a-f-]{36}\/issue-images\/[0-9a-f-]{36}\.(?:png|jpg|webp)$/i;
+const imageUrlSchema = z.string().trim().max(2048).refine((value) => {
+	if (internalImageUrlPattern.test(value)) return true;
+	try {
+		return new URL(value).protocol === "https:";
+	} catch {
+		return false;
+	}
+}, "Image URL must use HTTPS");
 
 const createIssueSchema = z.object({
 	title: z.string().trim().min(1).max(200),
@@ -35,6 +44,7 @@ const createIssueSchema = z.object({
 	assigneeId: z.string().uuid().optional(),
 	qaAssigneeId: z.string().uuid().optional(),
 	testCaseId: z.string().uuid().optional(),
+	imageUrl: imageUrlSchema.optional(),
 });
 
 const updateIssueSchema = z.object({
@@ -57,6 +67,7 @@ const updateIssueSchema = z.object({
 	assigneeId: z.string().uuid().nullable().optional(),
 	qaAssigneeId: z.string().uuid().nullable().optional(),
 	testCaseId: z.string().uuid().nullable().optional(),
+	imageUrl: imageUrlSchema.nullable().optional(),
 });
 
 const listIssuesQuerySchema = z.object({

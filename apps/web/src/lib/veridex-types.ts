@@ -33,6 +33,7 @@ export interface Issue {
 	environment?: string;
 	stepsToReproduce?: string[];
 	description?: string;
+	imageUrl?: string;
 	testCaseRef?: string;
 	assignee?: IssueAssignee;
 	qaOwner?: IssueAssignee;

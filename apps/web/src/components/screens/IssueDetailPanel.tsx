@@ -1,8 +1,17 @@
-import { Save, Trash2 } from "lucide-react";
+import { ImageIcon, Save, Trash2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { SeverityBadge } from "@/components/app/SeverityBadge";
 import { StatusHistory } from "@/components/app/StatusHistory";
 import { StatusPill } from "@/components/app/StatusPill";
+import {
+	Dialog,
+	DialogClose,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import {
 	Sheet,
 	SheetContent,
@@ -49,6 +58,7 @@ export function IssueDetailPanel({
 	onDelete,
 }: IssueDetailPanelProps) {
 	const [editing, setEditing] = useState(false);
+	const [imageOpen, setImageOpen] = useState(false);
 	const [error, setError] = useState("");
 	const canEdit = role !== "tester";
 	const canAssign = role === "qa" || role === "admin";
@@ -114,16 +124,28 @@ export function IssueDetailPanel({
 					<div className="flex flex-wrap items-center gap-2">
 						<StatusPill status={issue.status} />
 						<SeverityBadge severity={issue.severity} />
-						{canEdit ? (
-							<button
-								type="button"
-								disabled={pending}
-								onClick={() => setEditing((value) => !value)}
-								className="ml-auto min-h-9 rounded-md border border-[var(--line)] px-3 text-sm font-semibold hover:border-[var(--accent)] disabled:opacity-50"
-							>
-								{editing ? "Cancel edit" : "Edit"}
-							</button>
-						) : null}
+						<div className="ml-auto flex flex-wrap gap-2">
+							{issue.imageUrl ? (
+								<button
+									type="button"
+									onClick={() => setImageOpen(true)}
+									className="inline-flex min-h-9 items-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm font-semibold hover:border-[var(--accent)]"
+								>
+									<ImageIcon className="size-4" />
+									View image
+								</button>
+							) : null}
+							{canEdit ? (
+								<button
+									type="button"
+									disabled={pending}
+									onClick={() => setEditing((value) => !value)}
+									className="min-h-9 rounded-md border border-[var(--line)] px-3 text-sm font-semibold hover:border-[var(--accent)] disabled:opacity-50"
+								>
+									{editing ? "Cancel edit" : "Edit"}
+								</button>
+							) : null}
+						</div>
 					</div>
 					{error ? (
 						<p
@@ -265,6 +287,28 @@ export function IssueDetailPanel({
 					) : null}
 				</div>
 			</SheetContent>
+			{issue.imageUrl ? (
+				<Dialog open={imageOpen} onOpenChange={setImageOpen}>
+					<DialogContent className="h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] bg-[var(--surface)] p-4 sm:max-w-[calc(100vw-2rem)]">
+						<DialogHeader className="pr-10">
+							<DialogTitle>{issue.ticketRef} image</DialogTitle>
+							<DialogDescription>Attached image for {issue.title}</DialogDescription>
+						</DialogHeader>
+						<div className="flex min-h-0 items-center justify-center overflow-hidden rounded-md border border-[var(--line)] bg-black/90 p-2">
+							<img
+								src={issue.imageUrl}
+								alt={`Attachment for ${issue.ticketRef}: ${issue.title}`}
+								className="max-h-full max-w-full object-contain"
+							/>
+						</div>
+						<DialogFooter className="mx-0 mb-0 rounded-b-md bg-transparent p-0 pt-4">
+							<DialogClose className="min-h-10 rounded-md border border-[var(--line)] px-4 text-sm font-semibold hover:border-[var(--accent)]">
+								Close image
+							</DialogClose>
+						</DialogFooter>
+					</DialogContent>
+				</Dialog>
+			) : null}
 		</Sheet>
 	);
 }

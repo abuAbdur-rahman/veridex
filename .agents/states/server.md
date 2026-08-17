@@ -1,6 +1,6 @@
 # Server State
 
-Last updated: 2026-08-17
+Last updated: 2026-08-18
 
 ## Current Boundary
 
@@ -125,6 +125,24 @@ Routes:
 
 Issue list filtering supports status, developer assignee, QA assignee, severity, search, limit, and offset. Status transitions enforce the four-state lifecycle, reject unchanged/invalid transitions, require notes for backward transitions, and write issue status plus history atomically with `source: "web"`. Assignment targets must be project members. Admin role is required for deletion; QA or admin is required for the dedicated assignment endpoint.
 
+### Implemented Issue Images Slice
+
+Registered in `apps/server/src/app.ts` and implemented by:
+
+- `apps/server/src/routes/issue-images.ts`
+- `apps/server/src/lib/r2.ts`
+
+Routes:
+
+- `POST /api/projects/:projectId/issue-images` requires any project role, accepts a single multipart file (`image`) up to 5 MB, restricts to PNG/JPEG/WebP by both declared MIME and verified magic bytes, and returns the same-origin relative path `/api/projects/:projectId/issue-images/{key}` for storage under `projects/{projectId}/issue-images/{uuid}.{ext}` in Cloudflare R2.
+- `GET /api/projects/:projectId/issue-images/:key` requires any project role and streams the private object bytes and content type from R2. Membership is rechecked on every read.
+
+The Zod validators on issue `POST`/`PATCH` accept either an `https:` URL or the generated internal image path. R2 credentials are all-or-none; when absent, upload returns `503 IMAGE_STORAGE_UNAVAILABLE` so the API still boots in local/test environments without secrets.
+
+## Database State (continued)
+
+- Migration `0008` adds nullable `issues.image_url text` to persist either a validated external URL or the project-scoped internal image path. The generated SQL has been reviewed; apply it with `pnpm db:migrate` in each environment.
+
 ## Database State
 
 - Migration `0007` adds query-driven indexes `idx_project_team` (`project(team_id)`) and `idx_project_member_project` (`project_member(project_id)`). The generated SQL has been reviewed; apply it with `pnpm db:migrate` in each environment.
@@ -148,10 +166,10 @@ pnpm db:migrate
 
 Latest results:
 
-- Vitest: 15 files, 188 tests passed.
+- Vitest: 16 files, 196 tests passed (added 5 image-route tests, 3 issue route image URL tests).
 - Typecheck: passed.
 - Build: passed.
-- `pnpm db:generate`: no schema changes after migration `0007`.
+- `pnpm db:generate`: produced migration `0008_round_glorian.sql` adding `issues.image_url`.
 
 Focused tests:
 
@@ -164,6 +182,7 @@ Focused tests:
 - `apps/server/src/routes/projects.test.ts`
 - `apps/server/src/services/project.service.test.ts`
 - `apps/server/src/routes/issues.test.ts`
+- `apps/server/src/routes/issue-images.test.ts`
 - `apps/server/src/services/issue.service.test.ts`
 - `apps/server/src/lib/auth.test.ts`
 - `apps/server/src/config.test.ts`
