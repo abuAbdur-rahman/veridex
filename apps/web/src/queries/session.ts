@@ -19,9 +19,7 @@ export function applyOnboardingResult(
 
 	const personalTeam: MeTeam = { ...result.team, teamRole: "owner" };
 	const teams = current.teams.some((team) => team.id === personalTeam.id)
-		? current.teams.map((team) =>
-				team.id === personalTeam.id ? personalTeam : team,
-			)
+		? current.teams.map((team) => (team.id === personalTeam.id ? personalTeam : team))
 		: [...current.teams, personalTeam];
 
 	return {

@@ -1,13 +1,7 @@
 import { compareBad, compareGood } from "@/lib/landing-data";
 import { SectionHead } from "./SectionHead";
 
-function CompareList({
-	items,
-	good,
-}: {
-	items: readonly string[];
-	good: boolean;
-}) {
+function CompareList({ items, good }: { items: readonly string[]; good: boolean }) {
 	return (
 		<ul className="compare-list">
 			{items.map((item) => (

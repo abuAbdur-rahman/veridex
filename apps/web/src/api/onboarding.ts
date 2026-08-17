@@ -46,9 +46,7 @@ export function deriveUsername(email: string | undefined, name?: string) {
 
 function isUsernameAvailability(value: unknown): value is UsernameAvailability {
 	return (
-		isRecord(value) &&
-		typeof value.username === "string" &&
-		typeof value.available === "boolean"
+		isRecord(value) && typeof value.username === "string" && typeof value.available === "boolean"
 	);
 }
 

@@ -5,10 +5,7 @@ export function Features() {
 	return (
 		<section id="features">
 			<div className="wrap">
-				<SectionHead
-					label="What's in it"
-					title="Built around how bugs actually get fixed"
-				/>
+				<SectionHead label="What's in it" title="Built around how bugs actually get fixed" />
 				<div className="grid-features">
 					{features.map((feature) => (
 						<article className="feature" key={feature.index}>

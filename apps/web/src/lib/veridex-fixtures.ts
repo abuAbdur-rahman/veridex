@@ -239,9 +239,27 @@ export const issueComments: IssueComment[] = [
 ];
 
 export const teamMembers: TeamMember[] = [
-	{ id: "usr_sarah", teamId: "team_acme", name: "Sarah Chen", email: "sarah@acme.com", role: "owner" },
-	{ id: "usr_marcus", teamId: "team_acme", name: "Marcus Lee", email: "marcus@acme.com", role: "member" },
-	{ id: "usr_dana", teamId: "team_acme", name: "Dana Okafor", email: "dana@acme.com", role: "member" },
+	{
+		id: "usr_sarah",
+		teamId: "team_acme",
+		name: "Sarah Chen",
+		email: "sarah@acme.com",
+		role: "owner",
+	},
+	{
+		id: "usr_marcus",
+		teamId: "team_acme",
+		name: "Marcus Lee",
+		email: "marcus@acme.com",
+		role: "member",
+	},
+	{
+		id: "usr_dana",
+		teamId: "team_acme",
+		name: "Dana Okafor",
+		email: "dana@acme.com",
+		role: "member",
+	},
 ];
 
 export const pendingInvites: PendingInvite[] = [
@@ -304,7 +322,12 @@ export const importErrors: ImportErrorRow[] = [
 ];
 
 export const mcpTokens: McpToken[] = [
-	{ id: "tok_1", name: "Claude Code - MacBook", createdAt: "2026-08-01T09:00:00.000Z", lastUsed: "2 hours ago" },
+	{
+		id: "tok_1",
+		name: "Claude Code - MacBook",
+		createdAt: "2026-08-01T09:00:00.000Z",
+		lastUsed: "2 hours ago",
+	},
 ];
 
 export const mcpProjectAccess: McpProjectAccess[] = [
@@ -322,6 +345,18 @@ export const mcpTools: McpTool[] = [
 ];
 
 export const mcpActivity: McpActivity[] = [
-	{ id: "act_1", tokenId: "tok_1", projectId: "proj_1", action: "VER-042 status \u2192 in_qa", at: "3 min ago" },
-	{ id: "act_2", tokenId: "tok_1", projectId: "proj_1", action: "VER-038 created", at: "1 hour ago" },
+	{
+		id: "act_1",
+		tokenId: "tok_1",
+		projectId: "proj_1",
+		action: "VER-042 status \u2192 in_qa",
+		at: "3 min ago",
+	},
+	{
+		id: "act_2",
+		tokenId: "tok_1",
+		projectId: "proj_1",
+		action: "VER-038 created",
+		at: "1 hour ago",
+	},
 ];

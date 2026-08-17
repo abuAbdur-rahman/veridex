@@ -31,6 +31,7 @@ export const project = pgTable(
 			table.teamId,
 			table.slug,
 		),
+		teamIdx: index("idx_project_team").on(table.teamId),
 	}),
 );
 
@@ -47,5 +48,6 @@ export const projectMember = pgTable(
 	(table) => ({
 		pk: primaryKey({ columns: [table.projectId, table.userId] }),
 		userIdx: index("project_member_user_idx").on(table.userId),
+		projectIdx: index("idx_project_member_project").on(table.projectId),
 	}),
 );

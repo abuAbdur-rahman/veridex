@@ -165,7 +165,7 @@ a {
 	border-radius: 8px;
 	background: var(--surface);
 	color: var(--ink);
-	font: 13px/1.5 var(--sans);
+	font: 13px / 1.5 var(--sans);
 }
 .app-input:focus {
 	border-color: var(--accent);
@@ -416,7 +416,7 @@ h1 em {
 	font-size: 11px;
 	line-height: 1.65;
 }
-section:not(.hero) {
+.landing-page section:not(.hero) {
 	padding-block: 84px;
 	border-top: 1px solid var(--line-soft);
 }
@@ -757,16 +757,17 @@ footer {
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
+	* {
+		@apply border-border outline-ring/50;
 	}
-  body {
-    @apply bg-background text-foreground;
+	body {
+		@apply bg-background text-foreground;
 	}
-  button:not(:disabled), [role="button"]:not(:disabled) {
-    cursor: pointer;
+	button:not(:disabled),
+	[role="button"]:not(:disabled) {
+		cursor: pointer;
 	}
-  html {
-    @apply font-sans;
+	html {
+		@apply font-sans;
 	}
 }

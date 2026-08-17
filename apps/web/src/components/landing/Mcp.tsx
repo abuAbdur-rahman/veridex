@@ -11,17 +11,17 @@ export function Mcp() {
 				/>
 				<div className="terminal">
 					<div>
-						<span className="prompt">&gt;</span> mark TICKET-047 as verified and
-						reassign TICKET-051 to QA
+						<span className="prompt">&gt;</span> mark TICKET-047 as verified and reassign TICKET-051
+						to QA
 					</div>
 					<div className="dim">&nbsp;</div>
 					<div>
-						<span className="call">→ calling</span> update_issue_status(id:
-						&quot;047&quot;, status: &quot;verified&quot;)
+						<span className="call">→ calling</span> update_issue_status(id: &quot;047&quot;, status:
+						&quot;verified&quot;)
 					</div>
 					<div>
-						<span className="call">→ calling</span> assign_issue(id:
-						&quot;051&quot;, role: &quot;qa&quot;)
+						<span className="call">→ calling</span> assign_issue(id: &quot;051&quot;, role:
+						&quot;qa&quot;)
 					</div>
 					<div className="dim">&nbsp;</div>
 					<div>

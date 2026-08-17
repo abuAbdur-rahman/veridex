@@ -11,9 +11,16 @@ interface QaTriageScreenProps {
 	onOpenIssue?: (issue: Issue) => void;
 }
 
-export function QaTriageScreen({ issues, onQuickVerify, onReject, onOpenIssue }: QaTriageScreenProps) {
+export function QaTriageScreen({
+	issues,
+	onQuickVerify,
+	onReject,
+	onOpenIssue,
+}: QaTriageScreenProps) {
 	const severityOrder = { critical: 4, high: 3, medium: 2, low: 1 };
-	const sortedIssues = issues.toSorted((a, b) => severityOrder[b.severity] - severityOrder[a.severity]);
+	const sortedIssues = issues.toSorted(
+		(a, b) => severityOrder[b.severity] - severityOrder[a.severity],
+	);
 	if (issues.length === 0) {
 		return (
 			<>
@@ -68,7 +75,15 @@ export function QaTriageScreen({ issues, onQuickVerify, onReject, onOpenIssue }:
 	);
 }
 
-function QaActions({ issue, onQuickVerify, onReject }: { issue: Issue; onQuickVerify?: (issue: Issue) => void; onReject?: (issue: Issue, note: string) => void }) {
+function QaActions({
+	issue,
+	onQuickVerify,
+	onReject,
+}: {
+	issue: Issue;
+	onQuickVerify?: (issue: Issue) => void;
+	onReject?: (issue: Issue, note: string) => void;
+}) {
 	return (
 		<div className="flex items-center justify-end gap-2">
 			<button
@@ -80,10 +95,15 @@ function QaActions({ issue, onQuickVerify, onReject }: { issue: Issue; onQuickVe
 				<Check className="size-3" aria-hidden="true" strokeWidth={1.5} />
 				Verify
 			</button>
-			<button type="button" disabled={!onReject} onClick={() => {
-				const note = window.prompt("What still needs work?");
-				if (note?.trim()) onReject?.(issue, note);
-			}} className="inline-flex min-h-8 items-center gap-1.5 rounded-[6px] border border-[var(--line)] px-2.5 text-xs font-semibold text-[var(--ink-soft)] hover:border-[var(--accent)] hover:text-[var(--ink)] disabled:opacity-40">
+			<button
+				type="button"
+				disabled={!onReject}
+				onClick={() => {
+					const note = window.prompt("What still needs work?");
+					if (note?.trim()) onReject?.(issue, note);
+				}}
+				className="inline-flex min-h-8 items-center gap-1.5 rounded-[6px] border border-[var(--line)] px-2.5 text-xs font-semibold text-[var(--ink-soft)] hover:border-[var(--accent)] hover:text-[var(--ink)] disabled:opacity-40"
+			>
 				<RotateCcw className="size-3" aria-hidden="true" /> Send back
 			</button>
 		</div>

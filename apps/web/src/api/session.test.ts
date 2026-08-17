@@ -1,10 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-	deriveProfile,
-	fetchMe,
-	initialsFor,
-	type MeUser,
-} from "@/api/session";
+import { deriveProfile, fetchMe, initialsFor, type MeUser } from "@/api/session";
 
 describe("session API", () => {
 	afterEach(() => {
@@ -12,18 +7,23 @@ describe("session API", () => {
 	});
 
 	it("returns null when /api/me rejects an absent session", async () => {
-		const fetchMock = vi.fn().mockResolvedValue(
-			new Response(
-				JSON.stringify({ error: { code: "UNAUTHORIZED", message: "Session required" } }),
-				{ status: 401, headers: { "Content-Type": "application/json" } },
-			),
-		);
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValue(
+				new Response(
+					JSON.stringify({ error: { code: "UNAUTHORIZED", message: "Session required" } }),
+					{ status: 401, headers: { "Content-Type": "application/json" } },
+				),
+			);
 		vi.stubGlobal("fetch", fetchMock);
 
 		await expect(fetchMe()).resolves.toBeNull();
-		expect(fetchMock).toHaveBeenCalledWith("/api/me", expect.objectContaining({
-			credentials: "include",
-		}));
+		expect(fetchMock).toHaveBeenCalledWith(
+			"/api/me",
+			expect.objectContaining({
+				credentials: "include",
+			}),
+		);
 	});
 });
 
@@ -53,12 +53,8 @@ describe("session profile helpers", () => {
 			initials: "SC",
 			avatarUrl: "https://example.com/avatar.png",
 		});
-		expect(deriveProfile({ ...user, name: "Different Name" }).gradient).toBe(
-			profile.gradient,
-		);
-		expect(deriveProfile({ ...user, id: "usr_xyz" }).gradient).not.toBe(
-			profile.gradient,
-		);
+		expect(deriveProfile({ ...user, name: "Different Name" }).gradient).toBe(profile.gradient);
+		expect(deriveProfile({ ...user, id: "usr_xyz" }).gradient).not.toBe(profile.gradient);
 	});
 
 	it("falls back when optional profile fields are null", () => {

@@ -61,7 +61,9 @@ function ProjectImportView() {
 		setImportError(undefined);
 		const result = importDemoIssues(projectId, {
 			fileName,
-			targetStatuses: isCsv ? [defaultStatus] : rowColorMappings.map((mapping) => mapping.targetStatus),
+			targetStatuses: isCsv
+				? [defaultStatus]
+				: rowColorMappings.map((mapping) => mapping.targetStatus),
 		});
 		if (!result.ok) {
 			setImportError(result.error);
@@ -98,14 +100,18 @@ function ProjectImportView() {
 					defaultStatus={defaultStatus}
 					error={importError}
 					onColumnChange={(index, targetField) => {
-						setColumnMappings((current) => current.map((column, columnIndex) =>
-							columnIndex === index ? { ...column, targetField } : column,
-						));
+						setColumnMappings((current) =>
+							current.map((column, columnIndex) =>
+								columnIndex === index ? { ...column, targetField } : column,
+							),
+						);
 					}}
 					onRowColorChange={(index, targetStatus) => {
-						setRowColorMappings((current) => current.map((color, colorIndex) =>
-							colorIndex === index ? { ...color, targetStatus } : color,
-						));
+						setRowColorMappings((current) =>
+							current.map((color, colorIndex) =>
+								colorIndex === index ? { ...color, targetStatus } : color,
+							),
+						);
 					}}
 					onDefaultStatusChange={setDefaultStatus}
 					onCancel={returnToUpload}
@@ -117,10 +123,12 @@ function ProjectImportView() {
 					failedCount={importErrors.length}
 					errors={importErrors}
 					onRestart={returnToUpload}
-					onViewBoard={() => navigate({
-						to: "/projects/$projectId",
-						params: { projectId },
-					})}
+					onViewBoard={() =>
+						navigate({
+							to: "/projects/$projectId",
+							params: { projectId },
+						})
+					}
 				/>
 			)}
 		</>

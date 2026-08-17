@@ -1,9 +1,4 @@
-export const ISSUE_STATUSES = [
-	"backlog",
-	"in_progress",
-	"in_qa",
-	"verified",
-] as const;
+export const ISSUE_STATUSES = ["backlog", "in_progress", "in_qa", "verified"] as const;
 
 export type IssueStatus = (typeof ISSUE_STATUSES)[number];
 
@@ -50,7 +45,7 @@ export interface Issue {
 export interface IssueHistoryEntry {
 	id: string;
 	issueId: string;
-	projectId: string;
+	projectId?: string;
 	fromStatus: IssueStatus | null;
 	toStatus: IssueStatus;
 	by: string;
@@ -181,3 +176,13 @@ export interface DemoImportOptions {
 }
 
 export type RoleView = "dev" | "qa" | "tester" | "all";
+
+export const ROLE_VIEWS: readonly RoleView[] = ["dev", "qa", "tester", "all"];
+
+export function isRoleView(value: unknown): value is RoleView {
+	return typeof value === "string" && (ROLE_VIEWS as readonly string[]).includes(value);
+}
+
+export function requiresAuditNote(toStatus: IssueStatus): boolean {
+	return toStatus === "backlog" || toStatus === "in_progress";
+}

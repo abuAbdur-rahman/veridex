@@ -45,30 +45,52 @@ export function BoardScreen({ issues, onOpenIssue, onMoveIssue }: BoardScreenPro
 		if (!onMoveIssue || !event.over) return;
 		const issue = issues.find((item) => item.id === String(event.active.id));
 		const targetStatus = event.over.data.current?.status;
-		if (!issue || typeof targetStatus !== "string" || !ISSUE_STATUSES.includes(targetStatus as IssueStatus)) return;
+		if (
+			!issue ||
+			typeof targetStatus !== "string" ||
+			!ISSUE_STATUSES.includes(targetStatus as IssueStatus)
+		)
+			return;
 		if (issue.status !== targetStatus) onMoveIssue(issue, targetStatus as IssueStatus);
 	}
 
 	return (
-		<DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragCancel={() => setActiveIssue(undefined)} onDragEnd={handleDragEnd}>
-		<div className="kanban-scroll flex h-full gap-4 overflow-x-auto pb-4">
-			{COLUMNS.map((column) => (
-				<KanbanColumn
-					key={column.status}
-					status={column.status}
-					title={column.title}
-					accent={column.accent}
-					count={issues.filter((issue) => issue.status === column.status).length}
-					issues={issues.filter((issue) => issue.status === column.status)}
-					onOpenIssue={onOpenIssue}
-					onMoveIssue={onMoveIssue}
-					dropDisabled={Boolean(activeIssue && activeIssue.status !== column.status && !getAllowedTransitions(activeIssue.status).includes(column.status))}
-				/>
-			))}
-		</div>
-		<DragOverlay dropAnimation={{ duration: 120, easing: "ease-out" }}>
-			{activeIssue ? <div className="w-[288px] rounded-[10px] border border-[var(--accent)] bg-[var(--surface)] p-4 shadow-[0_12px_30px_rgba(0,0,0,0.2)]"><span className="font-[var(--mono)] text-[11px] text-[var(--ink-soft)]">{activeIssue.ticketRef}</span><p className="mt-1 text-sm font-semibold">{activeIssue.title}</p></div> : null}
-		</DragOverlay>
+		<DndContext
+			sensors={sensors}
+			collisionDetection={closestCorners}
+			onDragStart={handleDragStart}
+			onDragCancel={() => setActiveIssue(undefined)}
+			onDragEnd={handleDragEnd}
+		>
+			<div className="kanban-scroll flex h-full gap-4 overflow-x-auto pb-4">
+				{COLUMNS.map((column) => (
+					<KanbanColumn
+						key={column.status}
+						status={column.status}
+						title={column.title}
+						accent={column.accent}
+						count={issues.filter((issue) => issue.status === column.status).length}
+						issues={issues.filter((issue) => issue.status === column.status)}
+						onOpenIssue={onOpenIssue}
+						onMoveIssue={onMoveIssue}
+						dropDisabled={Boolean(
+							activeIssue &&
+								activeIssue.status !== column.status &&
+								!getAllowedTransitions(activeIssue.status).includes(column.status),
+						)}
+					/>
+				))}
+			</div>
+			<DragOverlay dropAnimation={{ duration: 120, easing: "ease-out" }}>
+				{activeIssue ? (
+					<div className="w-[288px] rounded-[10px] border border-[var(--accent)] bg-[var(--surface)] p-4 shadow-[0_12px_30px_rgba(0,0,0,0.2)]">
+						<span className="font-[var(--mono)] text-[11px] text-[var(--ink-soft)]">
+							{activeIssue.ticketRef}
+						</span>
+						<p className="mt-1 text-sm font-semibold">{activeIssue.title}</p>
+					</div>
+				) : null}
+			</DragOverlay>
 		</DndContext>
 	);
 }

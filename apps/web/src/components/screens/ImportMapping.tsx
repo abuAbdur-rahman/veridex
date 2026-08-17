@@ -43,10 +43,17 @@ export function ImportMapping({
 										key={column.spreadsheetColumn}
 										className="flex items-center gap-3 border-b border-[var(--line-soft)] px-4 py-3 last:border-b-0"
 									>
-										<label htmlFor={selectId} className="flex-1 truncate font-[var(--mono)] text-xs text-[var(--ink-soft)]">
+										<label
+											htmlFor={selectId}
+											className="flex-1 truncate font-[var(--mono)] text-xs text-[var(--ink-soft)]"
+										>
 											&quot;{column.spreadsheetColumn}&quot;
 										</label>
-										<ArrowRight className="size-4 shrink-0 text-[var(--ink-soft)]" aria-hidden="true" strokeWidth={1.5} />
+										<ArrowRight
+											className="size-4 shrink-0 text-[var(--ink-soft)]"
+											aria-hidden="true"
+											strokeWidth={1.5}
+										/>
 										<select
 											id={selectId}
 											value={column.targetField}
@@ -69,7 +76,10 @@ export function ImportMapping({
 				{isCsv ? (
 					<section aria-label="Default status">
 						<SectionLabel>Default status for all imported issues</SectionLabel>
-						<label htmlFor="default-import-status" className="mt-3 block text-sm font-medium text-[var(--ink)]">
+						<label
+							htmlFor="default-import-status"
+							className="mt-3 block text-sm font-medium text-[var(--ink)]"
+						>
 							Imported issue status
 						</label>
 						<select
@@ -96,15 +106,22 @@ export function ImportMapping({
 											key={color.color}
 											className="flex items-center gap-3 border-b border-[var(--line-soft)] px-4 py-3 last:border-b-0"
 										>
-										<span
-											className="size-3.5 shrink-0 rounded-full border border-[var(--line)]"
-											style={{ background: color.hex }}
-											aria-hidden="true"
-										/>
-											<label htmlFor={selectId} className="w-[140px] shrink-0 font-[var(--mono)] text-xs text-[var(--ink)]">
+											<span
+												className="size-3.5 shrink-0 rounded-full border border-[var(--line)]"
+												style={{ background: color.hex }}
+												aria-hidden="true"
+											/>
+											<label
+												htmlFor={selectId}
+												className="w-[140px] shrink-0 font-[var(--mono)] text-xs text-[var(--ink)]"
+											>
 												{color.color} ({color.rows})
 											</label>
-											<ArrowRight className="size-4 shrink-0 text-[var(--ink-soft)]" aria-hidden="true" strokeWidth={1.5} />
+											<ArrowRight
+												className="size-4 shrink-0 text-[var(--ink-soft)]"
+												aria-hidden="true"
+												strokeWidth={1.5}
+											/>
 											<select
 												id={selectId}
 												value={color.targetStatus}
@@ -126,7 +143,10 @@ export function ImportMapping({
 				)}
 
 				{error ? (
-					<p role="alert" className="rounded-lg border border-[var(--block)] px-4 py-3 text-sm text-[var(--block)]">
+					<p
+						role="alert"
+						className="rounded-lg border border-[var(--block)] px-4 py-3 text-sm text-[var(--block)]"
+					>
 						{error}
 					</p>
 				) : null}
