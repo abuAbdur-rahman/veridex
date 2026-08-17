@@ -6,7 +6,7 @@ import { SeverityBadge } from "@/components/app/SeverityBadge";
 import { StatusHistory } from "@/components/app/StatusHistory";
 import { StatusPill } from "@/components/app/StatusPill";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { getAllowedTransitions, isBackwardTransition, type ActionResult } from "@/lib/demo-store";
+import { getAllowedTransitions, isBackwardTransition, type ActionResult } from "@/stores/demo-store";
 import { formatRelativeTime } from "@/lib/format-time";
 import type { Issue, IssueComment, IssueHistoryEntry, IssueStatus, Severity } from "@/lib/veridex-types";
 

@@ -1,7 +1,7 @@
 import type { Issue, IssueStatus } from "@/lib/veridex-types";
 import { BoardScreen } from "@/components/screens/BoardScreen";
 import type { RoleView } from "@/lib/veridex-types";
-import { useDemoStore } from "@/lib/demo-store";
+import { useDemoStore } from "@/stores/demo-store";
 
 interface AdminBoardProps {
 	issues: Issue[];

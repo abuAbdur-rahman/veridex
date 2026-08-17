@@ -1,10 +1,10 @@
 # Server State
 
-Last updated: 2026-08-15
+Last updated: 2026-08-16
 
 ## Current Boundary
 
-The backend foundation and onboarding vertical slice are implemented and committed in `apps/server/`. No teams/invites CRUD, general projects CRUD, issue workflows, WebSockets, spreadsheet import, API tokens, or MCP tools are implemented yet.
+The backend foundation, onboarding, and teams/invites vertical slices are implemented in `apps/server/`. No general projects CRUD, issue workflows, WebSockets, spreadsheet import, API tokens, or MCP tools are implemented yet.
 
 The active implementation plan is sourced from:
 
@@ -20,9 +20,9 @@ The active implementation plan is sourced from:
 - Helmet, CORS, rate limiting, Swagger (non-production), Better Auth, and health plugins/routes.
 - Shared error envelope: `{ error: { code, message, details? } }`. Fastify schema failures and manual Zod failures both surface as `422 VALIDATION_ERROR`.
 - Better Auth Drizzle adapter with optional Google/GitHub providers and `useSecureCookies` in production only.
-- Session and project-role authorization helpers; `requireProjectRole` validates `projectId` as a UUID before querying.
+- Session, team-role, and project-role authorization helpers; role helpers validate resource IDs as UUIDs before querying.
 - Drizzle schema for all planned auth and public tables.
-- Migrations `0000` through `0005`.
+- Migrations `0000` through `0006`.
 - `GET /health`.
 - `GET /api/me` returns a session projection (`{ id, expiresAt, userId }`); the raw auth token is never exposed.
 
@@ -60,9 +60,29 @@ Provisioning uses one Drizzle/PostgreSQL transaction:
 
 `auth.user` is part of the same Drizzle schema and PostgreSQL database, so the username update participates in the same transaction as public-table provisioning.
 
+## Implemented Teams And Invites Slice
+
+Registered in `apps/server/src/app.ts` and implemented by:
+
+- `apps/server/src/routes/teams.ts`
+- `apps/server/src/routes/invites.ts`
+- `apps/server/src/services/team.service.ts`
+- `apps/server/src/services/invite.service.ts`
+
+Routes:
+
+- `GET /api/teams` lists the caller's team memberships.
+- `POST /api/teams` creates a non-personal team and owner membership atomically.
+- `GET /api/teams/:teamId/members` requires team owner or admin access.
+- `POST /api/teams/:teamId/invites` requires team owner or admin access; owners may grant `admin` or `member`, while admins may grant only `member`.
+- `GET /api/invites/:token/validate` publicly validates invite state and returns safe invite metadata.
+- `POST /api/invites/:token/accept` requires a verified authenticated email matching the normalized invite email.
+
+Invite bearer tokens are random URL-safe values returned once. Only the SHA-256 hash and a safe prefix are persisted. Personal teams cannot issue or accept invites. Invite acceptance locks the invite and atomically inserts membership and marks the invite accepted.
+
 ## Database State
 
-- `drizzle.__drizzle_migrations` contains six rows for migrations `0000` through `0005`.
+- Migration `0006` replaces plaintext invite-token storage with unique `token_hash` and safe `token_prefix` columns. The generated SQL has been reviewed; apply it with `pnpm db:migrate` in each environment.
 - Migration `0005` removes `'closed'` from the `issue_status` enum, matching the product lifecycle `backlog <-> in_progress <-> in_qa <-> verified`. The `issues.closed_at` column remains per the spec.
 - `auth.user`, `team`, `team_member`, `project`, and `project_member` exist.
 - `user_username_unique`, `user_default_role_check`, `team_slug_unique`, and `project_team_slug_unique` exist.
@@ -82,7 +102,7 @@ pnpm db:migrate
 
 Latest results:
 
-- Vitest: 7 files, 69 tests passed.
+- Vitest: 11 files, 120 tests passed.
 - Typecheck: passed.
 - Build: passed.
 
@@ -90,6 +110,10 @@ Focused tests:
 
 - `apps/server/src/routes/onboarding.test.ts`
 - `apps/server/src/services/onboarding.service.test.ts`
+- `apps/server/src/routes/teams.test.ts`
+- `apps/server/src/routes/invites.test.ts`
+- `apps/server/src/services/team.service.test.ts`
+- `apps/server/src/services/invite.service.test.ts`
 - `apps/server/src/lib/auth.test.ts`
 - `apps/server/src/config.test.ts`
 - `apps/server/src/app.test.ts`
@@ -103,16 +127,8 @@ Completed task:
 
 - Server onboarding vertical slice (migrations `0002`–`0004`, `GET /api/me`, `GET /api/users/check-username`, `POST /api/onboarding/complete`), committed in `dc94eaf` and verified with 64 passing tests.
 - Server maintenance: aligned Vitest coverage tooling, restricted database URL schemes, documented planned MCP configuration, and limited the optional Compose database port to host loopback.
+- Teams and invites vertical slice: six team/invite routes, shared team-role authorization, hashed one-time invite tokens, atomic team creation and invite acceptance, and focused route/service tests.
 
 ## Next Recommended Slice
 
-Implement teams and invites, while reusing the established route/service/session patterns:
-
-- `GET /api/teams`
-- `POST /api/teams`
-- `GET /api/teams/:teamId/members`
-- `POST /api/teams/:teamId/invites`
-- `GET /api/invites/:token/validate`
-- `POST /api/invites/:token/accept`
-
-Invite acceptance must create membership and mark the invite accepted atomically, with authorization scoped to team membership and role.
+Implement projects and project membership while reusing the established route/service/session and role-authorization patterns. Keep authorization scoped to team/project membership, validate all route input with Zod, and use transactions for multi-row membership changes.

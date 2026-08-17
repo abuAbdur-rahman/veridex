@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { createDemoStore, DEMO_STORE_KEY } from "@/lib/demo-store";
+import { createDemoStore, DEMO_STORE_KEY } from "@/stores/demo-store";
 
 function createMemoryStorage() {
 	const values = new Map<string, string>();

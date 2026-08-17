@@ -2,19 +2,25 @@
 
 ## Purpose
 
-`apps/web/` contains the Veridex React SPA. The current route is a public product landing page; future authenticated dashboard routes should reuse the app providers and introduce their own route layout where needed.
+`apps/web/` contains the Veridex React SPA: a public landing page, authenticated QA workflow screens, and the client boundary for implemented server APIs. Authenticated routes share the application shell and TanStack Query cache.
 
 ## Structure
 
 ```text
 src/
   components/
+    app/           Authenticated shell and reusable workflow UI
     landing/       Landing page sections and interactive visual
     layout/        Site-wide navigation and footer
+    screens/       Focused route-level screens
     theme/         Theme controls
+    ui/            Shared UI primitives and feedback hosts
+  api/             Runtime-validated server request adapters
   lib/             Small reusable utilities
   providers/       App-wide context providers
+  queries/         TanStack Query options, hooks, and cache projections
   routes/          TanStack Router route modules
+  stores/          Fixture-backed demo domain state
   styles/          Reserved for additional style modules
   index.css        Design tokens and landing stylesheet
   main.tsx         Browser entry point
@@ -28,6 +34,7 @@ public/
 ```bash
 pnpm dev
 pnpm lint
+pnpm test
 pnpm typecheck
 pnpm build
 ```
@@ -35,9 +42,24 @@ pnpm build
 ## Conventions
 
 - Use `@/` for imports from `src/`.
+- Put server request adapters in `src/api/` and validate external responses before returning typed data.
+- Put shared TanStack Query options and hooks in `src/queries/`; use the router-provided `QueryClient` for guards and cache updates.
+- Keep fixture-only workflow state in `src/stores/demo-store.ts`. Do not mix server-backed mutations into that store.
 - Keep route definitions in `src/routes/`.
 - Keep reusable page pieces in focused components; do not create a single monolithic page file.
 - Validate external data at boundaries when API/form work is added.
 - Use Inter for prose and JetBrains Mono for IDs, labels, statuses, and section titles.
 - Do not merge status colors with the orange interaction accent.
 - Preserve visible focus states and `prefers-reduced-motion` support.
+
+## Current Server Integration
+
+Implemented client integrations:
+
+- **Auth/session:** Social sign-in/sign-out, `GET /api/me`, `GET /api/users/check-username`, `POST /api/onboarding/complete`.
+- **Teams:** `GET /api/teams`, `POST /api/teams`, `GET /api/teams/:teamId/members`.
+- **Invites:** `POST /api/teams/:teamId/invites`, `GET /api/invites/:token/validate`, `POST /api/invites/:token/accept`.
+
+Project, issue, import, WebSocket, API-token, and MCP flows remain fixture-backed. Team settings and sidebar use server-backed teams; invite accept route uses real validation/acceptance; login preserves invite redirect via search param.
+
+Check `.agents/states/server.md` before wiring a screen. A rendered frontend route does not imply a matching backend endpoint exists.

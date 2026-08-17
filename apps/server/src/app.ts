@@ -10,6 +10,8 @@ import { createAuth } from "./auth/index.js";
 import { createDb, type Database } from "./db/client.js";
 import { healthRoutes } from "./routes/health.js";
 import { onboardingRoutes } from "./routes/onboarding.js";
+import { teamRoutes } from "./routes/teams.js";
+import { inviteRoutes } from "./routes/invites.js";
 
 export interface BuildAppOptions {
 	db?: Database;
@@ -120,6 +122,8 @@ export function buildApp(
 	app.register(authPlugin);
 	app.register(healthRoutes);
 	app.register(onboardingRoutes);
+	app.register(teamRoutes);
+	app.register(inviteRoutes);
 
 	app.setNotFoundHandler((request, reply) => {
 		return reply.status(404).send({

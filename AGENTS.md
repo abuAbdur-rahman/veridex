@@ -44,6 +44,9 @@ Use `pnpm` for frontend dependency and script operations. Do not switch package 
 ## Frontend Conventions
 
 - Use `@/` for imports from `apps/web/src/`.
+- Keep server request adapters in `apps/web/src/api/`, validate successful responses at that boundary, and preserve the shared server error shape through `ApiError`.
+- Keep TanStack Query options and hooks in `apps/web/src/queries/`; route guards and components should share the same `QueryClient` cache.
+- Treat `apps/web/src/stores/demo-store.ts` as fixture state only. Do not add new server-backed behavior to it.
 - Keep TanStack Router definitions in `apps/web/src/routes/` and the router instance in `apps/web/src/router.tsx`.
 - Keep route pages composed from focused components; do not create a monolithic route module.
 - Put app-wide providers in `apps/web/src/providers/`.
@@ -85,6 +88,18 @@ Follow `.agents/veridex-backend-spec.md` and `.agents/veridex-db-schema.md` for 
 - Return the shared error shape: `{ error: { code, message, details? } }`.
 - Never log or persist plaintext API tokens.
 - Use `source: 'web' | 'mcp' | 'import'` explicitly on every status-changing call site.
+
+## Implemented API Boundary
+
+The web app currently consumes the server session, onboarding, team, and invite slices:
+
+- **Auth/session:** Better Auth social sign-in/sign-out, `GET /api/me`, `GET /api/users/check-username`, `POST /api/onboarding/complete`.
+- **Teams:** `GET /api/teams` (sidebar), `POST /api/teams` (create), `GET /api/teams/:teamId/members` (settings).
+- **Invites:** `POST /api/teams/:teamId/invites` (create invite), `GET /api/invites/:token/validate` (public), `POST /api/invites/:token/accept` (authenticated).
+
+Project, issue, import, WebSocket, API-token, and MCP screens remain fixture-backed until their server contracts are implemented and wired.
+
+Do not infer endpoint availability from frontend screens. Confirm implemented server scope in `.agents/states/server.md` before replacing fixture behavior.
 
 ## Documentation Rules
 

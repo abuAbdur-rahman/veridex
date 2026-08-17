@@ -7,7 +7,8 @@ export const invites = pgTable(
 	"invites",
 	{
 		id: uuid("id").primaryKey().defaultRandom(),
-		token: text("token").unique().notNull(),
+		tokenHash: text("token_hash").unique().notNull(),
+		tokenPrefix: text("token_prefix").notNull(),
 		teamId: uuid("team_id")
 			.notNull()
 			.references(() => team.id, { onDelete: "cascade" }),

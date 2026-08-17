@@ -5,7 +5,7 @@ import { ImportMapping } from "@/components/screens/ImportMapping";
 import { ImportComplete } from "@/components/screens/ImportComplete";
 import { useEffect, useState } from "react";
 import { importColumns, importErrors, importRowColors } from "@/lib/veridex-fixtures";
-import { useDemoStore } from "@/lib/demo-store";
+import { useDemoStore } from "@/stores/demo-store";
 import type { IssueStatus } from "@/lib/veridex-types";
 import { rootRoute } from "@/routes/__root";
 

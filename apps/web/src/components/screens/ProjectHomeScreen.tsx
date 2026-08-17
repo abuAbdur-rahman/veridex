@@ -10,7 +10,7 @@ import { IssueDetailPanel } from "@/components/screens/IssueDetailPanel";
 import { QaTriageScreen } from "@/components/screens/QaTriageScreen";
 import { ReportIssueModal, type ReportValues } from "@/components/screens/ReportIssueModal";
 import { TesterViewScreen } from "@/components/screens/TesterViewScreen";
-import { isBackwardTransition, useDemoStore } from "@/lib/demo-store";
+import { isBackwardTransition, useDemoStore } from "@/stores/demo-store";
 import type { Issue, IssueStatus, RoleView } from "@/lib/veridex-types";
 
 interface ProjectHomeScreenProps {

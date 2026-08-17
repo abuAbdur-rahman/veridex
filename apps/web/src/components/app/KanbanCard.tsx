@@ -10,7 +10,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { getAllowedTransitions } from "@/lib/demo-store";
+import { getAllowedTransitions } from "@/stores/demo-store";
 import { formatRelativeTime } from "@/lib/format-time";
 import type { IssueStatus } from "@/lib/veridex-types";
 

@@ -1,10 +1,16 @@
 # Veridex — Database Schema Specification
 
-> Version: v0.5 — added `issue_status_history.source` to power the MCP Connection page's agent activity feed.
+> Version: v0.6 — invite tokens are now hashed at rest.
 
 ---
 
-## What Changed from v0.4
+## What Changed from v0.5
+
+| Change | Detail |
+|--------|--------|
+| Invite token storage hardened | Replaced plaintext `invites.token` with unique SHA-256 `token_hash` plus display-safe `token_prefix`. Raw URL-safe tokens are returned once and never stored or logged. |
+
+## What Changed from v0.4 → v0.5
 
 | Change | Detail |
 |--------|--------|
@@ -137,12 +143,13 @@ Unchanged — see Better Auth docs. `account.providerId` is `google` or `github`
 
 ### 3. `invites` — NEW (fix #3)
 
-Persists team invite tokens so they can be validated, expired, and revoked server-side. Solves the "shareable link with nothing behind it" gap from v0.3.
+Persists team invite tokens so they can be validated, expired, and revoked server-side. Raw URL-safe tokens are returned exactly once when created and are never stored or logged. Only their SHA-256 hashes and display-safe prefixes are persisted. Incoming tokens are hashed before lookup.
 
 | Column | Type | Constraints | Notes |
 |--------|------|-------------|-------|
 | `id` | `uuid` | PK | |
-| `token` | `text` | UNIQUE NOT NULL | Random, URL-safe — appears in `/join/team/:token` |
+| `token_hash` | `text` | UNIQUE NOT NULL | SHA-256 hash used for invite lookup |
+| `token_prefix` | `text` | NOT NULL | Safe leading characters shown for identification |
 | `team_id` | `uuid` | FK → `team.id` ON DELETE CASCADE | |
 | `invited_by` | `text` | app FK → `auth.user.id` | |
 | `email` | `text` | NOT NULL | Invitee's email — for reference and future email delivery |
@@ -154,7 +161,8 @@ Persists team invite tokens so they can be validated, expired, and revoked serve
 ```typescript
 export const invites = pgTable('invites', {
   id: uuid('id').primaryKey().defaultRandom(),
-  token: text('token').unique().notNull(),
+  tokenHash: text('token_hash').unique().notNull(),
+  tokenPrefix: text('token_prefix').notNull(),
   teamId: uuid('team_id').notNull().references(() => team.id, { onDelete: 'cascade' }),
   invitedBy: text('invited_by').notNull(),
   email: text('email').notNull(),
@@ -165,7 +173,7 @@ export const invites = pgTable('invites', {
 });
 ```
 
-Acceptance logic (service layer): reject if `expires_at < now()` or `accepted_at IS NOT NULL`. On success, set `accepted_at = now()` and insert the `team_member` row in the same transaction.
+Acceptance logic (service layer): hash the incoming raw token with SHA-256 and look up `token_hash`; reject if `expires_at < now()` or `accepted_at IS NOT NULL`. On success, set `accepted_at = now()` and insert the `team_member` row in the same transaction. Never persist or log the raw token.
 
 ---
 
@@ -450,7 +458,7 @@ CREATE INDEX idx_project_member_user ON project_member(user_id);
 CREATE INDEX idx_project_team ON project(team_id);
 
 -- Invites
-CREATE INDEX idx_invites_token ON invites(token);
+CREATE UNIQUE INDEX idx_invites_token_hash ON invites(token_hash);
 CREATE INDEX idx_invites_team ON invites(team_id) WHERE accepted_at IS NULL;
 
 -- API tokens — lookup by hash on every MCP request
