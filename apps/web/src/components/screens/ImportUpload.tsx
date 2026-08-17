@@ -41,12 +41,14 @@ export function ImportUpload({ onFile }: ImportUploadProps) {
 					handleFiles(e.dataTransfer.files);
 				}}
 				className={`flex flex-col items-center justify-center gap-3 rounded-[12px] border-2 border-dashed px-8 py-20 text-center transition-colors duration-150 ${
-					dragging
-						? "border-[var(--accent)] bg-[var(--accent-bg)]"
-						: "border-[var(--line)]"
+					dragging ? "border-[var(--accent)] bg-[var(--accent-bg)]" : "border-[var(--line)]"
 				}`}
 			>
-				<UploadCloud className="size-10 text-[var(--ink-soft)]" aria-hidden="true" strokeWidth={1.5} />
+				<UploadCloud
+					className="size-10 text-[var(--ink-soft)]"
+					aria-hidden="true"
+					strokeWidth={1.5}
+				/>
 				<p className="text-base font-semibold text-[var(--ink)]">
 					Drop your .xlsx or .csv file here
 				</p>
@@ -71,12 +73,17 @@ export function ImportUpload({ onFile }: ImportUploadProps) {
 				/>
 			</div>
 			{error ? (
-				<p id="import-file-error" role="alert" className="mt-3 text-center text-sm font-medium text-[var(--block)]">
+				<p
+					id="import-file-error"
+					role="alert"
+					className="mt-3 text-center text-sm font-medium text-[var(--block)]"
+				>
 					{error}
 				</p>
 			) : null}
 			<p id="import-file-help" className="mt-4 text-center text-xs text-[var(--ink-soft)]">
-				Creates a demo preview using fixture columns and issues. CSV files use a default status; Excel files preview row-color mappings.
+				Creates a demo preview using fixture columns and issues. CSV files use a default status;
+				Excel files preview row-color mappings.
 			</p>
 		</div>
 	);

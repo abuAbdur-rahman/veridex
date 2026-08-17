@@ -14,10 +14,7 @@ describe("social sign-in API", () => {
 				headers: { "Content-Type": "application/json" },
 			}),
 		);
-		vi.stubGlobal(
-			"fetch",
-			fetchMock,
-		);
+		vi.stubGlobal("fetch", fetchMock);
 
 		await expect(signInWithProvider("github", "/join/team/invite-token")).rejects.toMatchObject({
 			code: "SIGN_IN_FAILED",
@@ -36,13 +33,10 @@ describe("social sign-in API", () => {
 
 	it("sanitizes open-redirect callback paths to the dashboard fallback", async () => {
 		const fetchMock = vi.fn().mockResolvedValue(
-			new Response(
-				JSON.stringify({ url: "https://accounts.example.com/auth" }),
-				{
-					status: 200,
-					headers: { "Content-Type": "application/json" },
-				},
-			),
+			new Response(JSON.stringify({ url: "https://accounts.example.com/auth" }), {
+				status: 200,
+				headers: { "Content-Type": "application/json" },
+			}),
 		);
 		vi.stubGlobal("fetch", fetchMock);
 
@@ -60,13 +54,10 @@ describe("social sign-in API", () => {
 
 	it("falls back to the dashboard for non-root-relative callback paths", async () => {
 		const fetchMock = vi.fn().mockResolvedValue(
-			new Response(
-				JSON.stringify({ url: "https://accounts.example.com/auth" }),
-				{
-					status: 200,
-					headers: { "Content-Type": "application/json" },
-				},
-			),
+			new Response(JSON.stringify({ url: "https://accounts.example.com/auth" }), {
+				status: 200,
+				headers: { "Content-Type": "application/json" },
+			}),
 		);
 		vi.stubGlobal("fetch", fetchMock);
 

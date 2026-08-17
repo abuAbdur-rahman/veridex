@@ -70,14 +70,12 @@ export function OnboardingScreen() {
 		retry: false,
 	});
 
-	const checkingCurrentInput =
-		lookupMatchesInput && lookupValid && checking;
+	const checkingCurrentInput = lookupMatchesInput && lookupValid && checking;
 	const confirmedAvailable =
 		lookupMatchesInput && !checking && !availabilityFailed && availability?.available === true;
 	const confirmedUnavailable =
 		lookupMatchesInput && !checking && !availabilityFailed && availability?.available === false;
-	const currentAvailabilityFailed =
-		lookupMatchesInput && lookupValid && availabilityFailed;
+	const currentAvailabilityFailed = lookupMatchesInput && lookupValid && availabilityFailed;
 
 	const { mutate: submit, isPending: submitting } = useMutation({
 		mutationFn: completeOnboarding,
@@ -108,9 +106,7 @@ export function OnboardingScreen() {
 			return;
 		}
 		if (!isValidUsername(normalized)) {
-			setError(
-				"Username must be 3–30 lowercase letters, numbers, underscores, or hyphens.",
-			);
+			setError("Username must be 3–30 lowercase letters, numbers, underscores, or hyphens.");
 			return;
 		}
 		if (!confirmedAvailable) {
@@ -191,10 +187,7 @@ export function OnboardingScreen() {
 								3–30 lowercase letters, numbers, underscores, or hyphens.
 							</p>
 						) : !inputValid ? (
-							<p
-								role="alert"
-								className="text-xs text-[var(--block)]"
-							>
+							<p role="alert" className="text-xs text-[var(--block)]">
 								3–30 lowercase letters, numbers, underscores, or hyphens.
 							</p>
 						) : currentAvailabilityFailed ? (
@@ -209,10 +202,7 @@ export function OnboardingScreen() {
 								</button>
 							</p>
 						) : confirmedUnavailable ? (
-							<p
-								role="alert"
-								className="text-xs text-[var(--block)]"
-							>
+							<p role="alert" className="text-xs text-[var(--block)]">
 								Unavailable — try another.
 							</p>
 						) : confirmedAvailable ? (
@@ -220,10 +210,7 @@ export function OnboardingScreen() {
 						) : null}
 					</FormField>
 					{error ? (
-						<p
-							role="alert"
-							className="text-xs text-[var(--block)]"
-						>
+						<p role="alert" className="text-xs text-[var(--block)]">
 							{error}
 						</p>
 					) : null}
@@ -243,11 +230,7 @@ export function OnboardingScreen() {
 							</>
 						) : (
 							<>
-								<Save
-									className="mr-2 size-4"
-									aria-hidden="true"
-									strokeWidth={1.5}
-								/>
+								<Save className="mr-2 size-4" aria-hidden="true" strokeWidth={1.5} />
 								Continue
 							</>
 						)}

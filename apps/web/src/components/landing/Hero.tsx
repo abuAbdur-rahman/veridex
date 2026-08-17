@@ -11,9 +11,9 @@ export function Hero() {
 					Turn scattered rows into <em>a record every role can trust.</em>
 				</h1>
 				<p className="lede">
-					Veridex is a QA-aware issue tracker for dev, QA, and test teams — one
-					board, three views, no forgotten column. Built after watching a real
-					team run bug tracking out of a shared Excel file.
+					Veridex is a QA-aware issue tracker for dev, QA, and test teams — one board, three views,
+					no forgotten column. Built after watching a real team run bug tracking out of a shared
+					Excel file.
 				</p>
 				<div className="cta-row">
 					<Link className="btn" to="/login">

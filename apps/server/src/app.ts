@@ -15,6 +15,8 @@ import { healthRoutes } from "./routes/health.js";
 import { onboardingRoutes } from "./routes/onboarding.js";
 import { teamRoutes } from "./routes/teams.js";
 import { inviteRoutes } from "./routes/invites.js";
+import { projectRoutes } from "./routes/projects.js";
+import { issueRoutes } from "./routes/issues.js";
 
 export interface BuildAppOptions {
 	db?: Database;
@@ -153,6 +155,8 @@ export function buildApp(
 	app.register(onboardingRoutes);
 	app.register(teamRoutes);
 	app.register(inviteRoutes);
+	app.register(projectRoutes);
+	app.register(issueRoutes);
 
 	app.setNotFoundHandler((request, reply) => {
 		return reply.status(404).send({

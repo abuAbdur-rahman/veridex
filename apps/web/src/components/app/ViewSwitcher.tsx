@@ -16,7 +16,11 @@ interface ViewSwitcherProps {
 
 export function ViewSwitcher({ value, onChange, label = "View" }: ViewSwitcherProps) {
 	return (
-		<div role="group" aria-label={label} className="flex items-center gap-0.5 rounded-lg border border-[var(--line)] bg-[var(--bg)] p-0.5">
+		<div
+			role="group"
+			aria-label={label}
+			className="flex items-center gap-0.5 rounded-lg border border-[var(--line)] bg-[var(--bg)] p-0.5"
+		>
 			{views.map((view) => {
 				const active = view.value === value;
 				return (

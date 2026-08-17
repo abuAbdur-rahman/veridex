@@ -13,27 +13,24 @@ export interface ValidatedInvite {
 }
 
 function isValidatedInvite(value: unknown): value is ValidatedInvite {
-	return isRecord(value)
-		&& typeof value.id === "string"
-		&& typeof value.teamId === "string"
-		&& typeof value.teamName === "string"
-		&& typeof value.teamSlug === "string"
-		&& typeof value.email === "string"
-		&& (value.teamRole === "owner" || value.teamRole === "admin" || value.teamRole === "member")
-		&& typeof value.expiresAt === "string";
+	return (
+		isRecord(value) &&
+		typeof value.id === "string" &&
+		typeof value.teamId === "string" &&
+		typeof value.teamName === "string" &&
+		typeof value.teamSlug === "string" &&
+		typeof value.email === "string" &&
+		(value.teamRole === "owner" || value.teamRole === "admin" || value.teamRole === "member") &&
+		typeof value.expiresAt === "string"
+	);
 }
 
 export function validateInvite(token: string) {
-	return apiRequest(
-		`/api/invites/${encodeURIComponent(token)}/validate`,
-		isValidatedInvite,
-	);
+	return apiRequest(`/api/invites/${encodeURIComponent(token)}/validate`, isValidatedInvite);
 }
 
 export function acceptInvite(token: string): Promise<ServerTeam> {
-	return apiRequest(
-		`/api/invites/${encodeURIComponent(token)}/accept`,
-		isServerTeam,
-		{ method: "POST" },
-	);
+	return apiRequest(`/api/invites/${encodeURIComponent(token)}/accept`, isServerTeam, {
+		method: "POST",
+	});
 }

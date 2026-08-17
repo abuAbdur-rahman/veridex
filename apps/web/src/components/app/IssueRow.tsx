@@ -16,13 +16,23 @@ export function IssueRow({ issue, trailing, onClick }: IssueRowProps) {
 			<td className="py-3 pl-4">
 				<div className="flex items-center gap-2.5">
 					<SeverityDot severity={issue.severity} />
-					{onClick ? <button type="button" onClick={onClick} className="font-[var(--mono)] text-xs text-[var(--accent-strong)] underline-offset-4 hover:underline">{issue.ticketRef}</button> : <span className="font-[var(--mono)] text-xs text-[var(--ink-soft)]">{issue.ticketRef}</span>}
+					{onClick ? (
+						<button
+							type="button"
+							onClick={onClick}
+							className="font-[var(--mono)] text-xs text-[var(--accent-strong)] underline-offset-4 hover:underline"
+						>
+							{issue.ticketRef}
+						</button>
+					) : (
+						<span className="font-[var(--mono)] text-xs text-[var(--ink-soft)]">
+							{issue.ticketRef}
+						</span>
+					)}
 				</div>
 			</td>
 			<td className="max-w-[420px] px-3 py-3">
-				<p className="truncate text-[13px] leading-[1.4] text-[var(--ink)]">
-					{issue.title}
-				</p>
+				<p className="truncate text-[13px] leading-[1.4] text-[var(--ink)]">{issue.title}</p>
 			</td>
 			<td className="px-3 py-3">
 				<StatusPill status={issue.status} />
@@ -36,9 +46,7 @@ export function IssueRow({ issue, trailing, onClick }: IssueRowProps) {
 							name={issue.assignee.name}
 							className="size-5 text-[9px]"
 						/>
-						<span className="text-xs text-[var(--ink-soft)]">
-							{issue.assignee.name}
-						</span>
+						<span className="text-xs text-[var(--ink-soft)]">{issue.assignee.name}</span>
 					</div>
 				) : (
 					<span className="text-xs text-[var(--ink-soft)]">Unassigned</span>

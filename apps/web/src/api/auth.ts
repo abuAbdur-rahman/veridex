@@ -3,9 +3,8 @@ import { ApiError, isRecord, readErrorText } from "@/api/client";
 export type SocialProvider = "google" | "github";
 
 export async function signInWithProvider(provider: SocialProvider, callbackPath = "/dashboard") {
-	const safeCallbackPath = callbackPath.startsWith("/") && !callbackPath.startsWith("//")
-		? callbackPath
-		: "/dashboard";
+	const safeCallbackPath =
+		callbackPath.startsWith("/") && !callbackPath.startsWith("//") ? callbackPath : "/dashboard";
 	const callbackURL = `${window.location.origin}${safeCallbackPath}`;
 	const response = await fetch("/api/auth/sign-in/social", {
 		method: "POST",

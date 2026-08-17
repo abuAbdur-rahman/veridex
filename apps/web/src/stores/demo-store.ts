@@ -1,10 +1,6 @@
 import { create } from "zustand";
 import { createStore, type StateCreator, type StoreApi } from "zustand/vanilla";
-import {
-	createJSONStorage,
-	persist,
-	type StateStorage,
-} from "zustand/middleware";
+import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
 
 import {
 	currentUser,
@@ -43,9 +39,7 @@ import type {
 export const DEMO_STORE_KEY = "veridex-demo-store";
 export const DEMO_STORE_VERSION = 1;
 
-export type ActionResult<T> =
-	| { ok: true; value: T }
-	| { ok: false; error: string };
+export type ActionResult<T> = { ok: true; value: T } | { ok: false; error: string };
 
 type IssueMap<T> = Record<string, T[]>;
 
@@ -81,13 +75,21 @@ export interface DemoStoreActions {
 	}) => ActionResult<Issue>;
 	updateIssue: (
 		issueId: string,
-		input: Partial<Pick<Issue, "title" | "summary" | "severity" | "description" | "environment" | "assignee" | "qaOwner" | "tags">>,
+		input: Partial<
+			Pick<
+				Issue,
+				| "title"
+				| "summary"
+				| "severity"
+				| "description"
+				| "environment"
+				| "assignee"
+				| "qaOwner"
+				| "tags"
+			>
+		>,
 	) => ActionResult<Issue>;
-	changeIssueStatus: (
-		issueId: string,
-		toStatus: IssueStatus,
-		note?: string,
-	) => ActionResult<Issue>;
+	changeIssueStatus: (issueId: string, toStatus: IssueStatus, note?: string) => ActionResult<Issue>;
 	addComment: (issueId: string, body: string) => ActionResult<IssueComment>;
 	addProjectMember: (input: {
 		projectId: string;
@@ -222,9 +224,10 @@ function storeCreator(
 					return { ok: false, error: "Project not found" };
 				}
 				const projectIssues = get().issues.filter(({ projectId }) => projectId === input.projectId);
-				const nextReference = projectIssues.reduce((max, issue) => {
-					return Math.max(max, Number(issue.ticketRef.match(/(\d+)$/)?.[1] ?? 0));
-				}, 0) + 1;
+				const nextReference =
+					projectIssues.reduce((max, issue) => {
+						return Math.max(max, Number(issue.ticketRef.match(/(\d+)$/)?.[1] ?? 0));
+					}, 0) + 1;
 				const timestamp = now();
 				const issue: Issue = {
 					id: nextId("iss", get().issues),
@@ -254,9 +257,11 @@ function storeCreator(
 				set((state) => ({
 					issues: [...state.issues, issue],
 					issueHistory: { ...state.issueHistory, [issue.id]: [history] },
-					projects: state.projects.map((project) => project.id === issue.projectId
-						? { ...project, openIssueCount: project.openIssueCount + 1 }
-						: project),
+					projects: state.projects.map((project) =>
+						project.id === issue.projectId
+							? { ...project, openIssueCount: project.openIssueCount + 1 }
+							: project,
+					),
 				}));
 				return { ok: true, value: issue };
 			},
@@ -271,7 +276,9 @@ function storeCreator(
 					...(title === undefined ? {} : { title }),
 					updatedAt: now(),
 				};
-				set((state) => ({ issues: state.issues.map((item) => item.id === issueId ? updated : item) }));
+				set((state) => ({
+					issues: state.issues.map((item) => (item.id === issueId ? updated : item)),
+				}));
 				return { ok: true, value: updated };
 			},
 			changeIssueStatus: (issueId, toStatus, note) => {
@@ -298,7 +305,7 @@ function storeCreator(
 					source: "web",
 				};
 				set((state) => ({
-					issues: state.issues.map((item) => item.id === issueId ? updated : item),
+					issues: state.issues.map((item) => (item.id === issueId ? updated : item)),
 					issueHistory: {
 						...state.issueHistory,
 						[issueId]: [...(state.issueHistory[issueId] ?? []), history],
@@ -319,10 +326,12 @@ function storeCreator(
 					body: trimmedBody,
 					at: now(),
 				};
-				set((state) => ({ issueComments: {
-					...state.issueComments,
-					[issueId]: [...(state.issueComments[issueId] ?? []), comment],
-				} }));
+				set((state) => ({
+					issueComments: {
+						...state.issueComments,
+						[issueId]: [...(state.issueComments[issueId] ?? []), comment],
+					},
+				}));
 				return { ok: true, value: comment };
 			},
 			addProjectMember: (input) => {
@@ -331,9 +340,13 @@ function storeCreator(
 				if (!get().projects.some(({ id }) => id === input.projectId)) {
 					return { ok: false, error: "Project not found" };
 				}
-				if (get().projectMembers.some((member) =>
-					member.projectId === input.projectId && member.name.toLowerCase() === name.toLowerCase()
-				)) {
+				if (
+					get().projectMembers.some(
+						(member) =>
+							member.projectId === input.projectId &&
+							member.name.toLowerCase() === name.toLowerCase(),
+					)
+				) {
 					return { ok: false, error: "Member already belongs to this project" };
 				}
 				const member: ProjectMember = {
@@ -351,13 +364,19 @@ function storeCreator(
 				const member = get().projectMembers.find(({ id }) => id === memberId);
 				if (!member) return { ok: false, error: "Project member not found" };
 				const updated = { ...member, role };
-				set((state) => ({ projectMembers: state.projectMembers.map((item) => item.id === memberId ? updated : item) }));
+				set((state) => ({
+					projectMembers: state.projectMembers.map((item) =>
+						item.id === memberId ? updated : item,
+					),
+				}));
 				return { ok: true, value: updated };
 			},
 			removeProjectMember: (memberId) => {
 				const member = get().projectMembers.find(({ id }) => id === memberId);
 				if (!member) return { ok: false, error: "Project member not found" };
-				set((state) => ({ projectMembers: state.projectMembers.filter(({ id }) => id !== memberId) }));
+				set((state) => ({
+					projectMembers: state.projectMembers.filter(({ id }) => id !== memberId),
+				}));
 				return { ok: true, value: member };
 			},
 			inviteTeamMember: (email, role = "member") => {
@@ -365,14 +384,20 @@ function storeCreator(
 				if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
 					return { ok: false, error: "Valid email is required" };
 				}
-				if (get().teamMembers.some((member) =>
-					member.teamId === get().currentTeamId && member.email?.toLowerCase() === normalizedEmail
-				)) {
+				if (
+					get().teamMembers.some(
+						(member) =>
+							member.teamId === get().currentTeamId &&
+							member.email?.toLowerCase() === normalizedEmail,
+					)
+				) {
 					return { ok: false, error: "User already belongs to this team" };
 				}
-				if (get().pendingInvites.some((invite) =>
-					invite.teamId === get().currentTeamId && invite.email === normalizedEmail
-				)) {
+				if (
+					get().pendingInvites.some(
+						(invite) => invite.teamId === get().currentTeamId && invite.email === normalizedEmail,
+					)
+				) {
 					return { ok: false, error: "Invite already pending" };
 				}
 				const invite: PendingInvite = {
@@ -388,13 +413,18 @@ function storeCreator(
 			revokeTeamInvite: (inviteId) => {
 				const invite = get().pendingInvites.find(({ id }) => id === inviteId);
 				if (!invite) return { ok: false, error: "Invite not found" };
-				set((state) => ({ pendingInvites: state.pendingInvites.filter(({ id }) => id !== inviteId) }));
+				set((state) => ({
+					pendingInvites: state.pendingInvites.filter(({ id }) => id !== inviteId),
+				}));
 				return { ok: true, value: invite };
 			},
 			saveProfile: ({ username }) => {
 				const normalizedUsername = username.trim();
 				if (!/^[a-zA-Z0-9_-]{3,32}$/.test(normalizedUsername)) {
-					return { ok: false, error: "Username must be 3-32 letters, numbers, dashes, or underscores" };
+					return {
+						ok: false,
+						error: "Username must be 3-32 letters, numbers, dashes, or underscores",
+					};
 				}
 				const profile = { ...get().profile, username: normalizedUsername };
 				set({ profile, currentUser: profile });
@@ -420,17 +450,20 @@ function storeCreator(
 				for (const [index, [title, severity]] of demoRows.entries()) {
 					const result = get().createIssue({ projectId, title, severity });
 					if (result.ok) {
-						const status = options.targetStatuses[index % options.targetStatuses.length] ?? "backlog";
+						const status =
+							options.targetStatuses[index % options.targetStatuses.length] ?? "backlog";
 						const updated = { ...result.value, status };
 						set((state) => ({
-							issues: state.issues.map((issue) => issue.id === updated.id ? updated : issue),
+							issues: state.issues.map((issue) => (issue.id === updated.id ? updated : issue)),
 							issueHistory: {
 								...state.issueHistory,
-								[updated.id]: [{
-									...(state.issueHistory[updated.id]?.[0] as IssueHistoryEntry),
-									toStatus: status,
-									source: "import",
-								}],
+								[updated.id]: [
+									{
+										...(state.issueHistory[updated.id]?.[0] as IssueHistoryEntry),
+										toStatus: status,
+										source: "import",
+									},
+								],
 							},
 						}));
 						imported.push(updated);
@@ -462,7 +495,9 @@ function storeCreator(
 				const token = get().mcpTokens.find(({ id }) => id === tokenId);
 				if (!token) return { ok: false, error: "Token not found" };
 				const revoked = { ...token, revokedAt: now() };
-				set((state) => ({ mcpTokens: state.mcpTokens.map((item) => item.id === tokenId ? revoked : item) }));
+				set((state) => ({
+					mcpTokens: state.mcpTokens.map((item) => (item.id === tokenId ? revoked : item)),
+				}));
 				return { ok: true, value: revoked };
 			},
 			reset: () => set(createFixtureState()),

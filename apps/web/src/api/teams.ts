@@ -36,12 +36,14 @@ function isTeamRole(value: unknown): value is TeamRole {
 }
 
 export function isServerTeam(value: unknown): value is ServerTeam {
-	return isRecord(value)
-		&& typeof value.id === "string"
-		&& typeof value.name === "string"
-		&& typeof value.slug === "string"
-		&& typeof value.isPersonal === "boolean"
-		&& isTeamRole(value.teamRole);
+	return (
+		isRecord(value) &&
+		typeof value.id === "string" &&
+		typeof value.name === "string" &&
+		typeof value.slug === "string" &&
+		typeof value.isPersonal === "boolean" &&
+		isTeamRole(value.teamRole)
+	);
 }
 
 function isNullableString(value: unknown): value is string | null {
@@ -49,30 +51,36 @@ function isNullableString(value: unknown): value is string | null {
 }
 
 function isServerTeamMember(value: unknown): value is ServerTeamMember {
-	return isRecord(value)
-		&& typeof value.id === "string"
-		&& typeof value.name === "string"
-		&& typeof value.email === "string"
-		&& isNullableString(value.image)
-		&& isNullableString(value.username)
-		&& isTeamRole(value.teamRole)
-		&& isNullableString(value.invitedBy)
-		&& typeof value.joinedAt === "string";
+	return (
+		isRecord(value) &&
+		typeof value.id === "string" &&
+		typeof value.name === "string" &&
+		typeof value.email === "string" &&
+		isNullableString(value.image) &&
+		isNullableString(value.username) &&
+		isTeamRole(value.teamRole) &&
+		isNullableString(value.invitedBy) &&
+		typeof value.joinedAt === "string"
+	);
 }
 
 function isTeamInvite(value: unknown): value is TeamInvite {
-	return isRecord(value)
-		&& typeof value.id === "string"
-		&& typeof value.teamId === "string"
-		&& typeof value.email === "string"
-		&& isTeamRole(value.teamRole)
-		&& typeof value.token === "string"
-		&& typeof value.expiresAt === "string";
+	return (
+		isRecord(value) &&
+		typeof value.id === "string" &&
+		typeof value.teamId === "string" &&
+		typeof value.email === "string" &&
+		isTeamRole(value.teamRole) &&
+		typeof value.token === "string" &&
+		typeof value.expiresAt === "string"
+	);
 }
 
 export function listTeams() {
-	return apiRequest("/api/teams", (value): value is ServerTeam[] =>
-		Array.isArray(value) && value.every(isServerTeam));
+	return apiRequest(
+		"/api/teams",
+		(value): value is ServerTeam[] => Array.isArray(value) && value.every(isServerTeam),
+	);
 }
 
 export function createTeam(input: { name: string; slug: string }) {
@@ -93,9 +101,8 @@ export function createTeamInvite(
 	teamId: string,
 	input: { email: string; teamRole: Exclude<TeamRole, "owner"> },
 ) {
-	return apiRequest(
-		`/api/teams/${encodeURIComponent(teamId)}/invites`,
-		isTeamInvite,
-		{ method: "POST", body: JSON.stringify(input) },
-	);
+	return apiRequest(`/api/teams/${encodeURIComponent(teamId)}/invites`, isTeamInvite, {
+		method: "POST",
+		body: JSON.stringify(input),
+	});
 }
