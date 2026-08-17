@@ -182,7 +182,6 @@ function Sidebar({ projectId, pathname, onClose, onLogout }: { projectId?: strin
 				initials: demoProfile.initials,
 				gradient: demoProfile.gradient,
 			};
-	const setCurrentTeam = useDemoStore((state) => state.setCurrentTeam);
 	const teams = serverTeams ?? me?.teams ?? [];
 	const currentTeam = teams.find((team) => team.id === selectedTeamId)
 		?? teams.find((team) => team.id === currentTeamId)
@@ -191,7 +190,6 @@ function Sidebar({ projectId, pathname, onClose, onLogout }: { projectId?: strin
 
 	function switchTeam(teamId: string) {
 		setSelectedTeamId(teamId);
-		setCurrentTeam(teamId);
 		const firstProject = projects.find((project) => project.teamId === teamId);
 		void navigate(firstProject
 			? { to: "/projects/$projectId", params: { projectId: firstProject.id }, search: {} }

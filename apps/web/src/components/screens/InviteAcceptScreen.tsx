@@ -47,21 +47,22 @@ export function InviteAcceptScreen({
 						<p className="mb-1 text-base font-semibold text-[var(--ink)]">
 							&ldquo;{teamName}&rdquo;
 						</p>
-						<p className="mb-8 text-sm text-[var(--ink-soft)]">This invite is for {inviteEmail}.</p>
+						{inviteEmail ? <p className="mb-8 text-sm text-[var(--ink-soft)]">This invite is for {inviteEmail}.</p> : null}
 						{error ? <p role="alert" className="mb-4 rounded-md border border-[var(--block)] bg-[var(--block-bg)] px-3 py-2 text-sm text-[var(--block)]">{error}</p> : null}
 						<div className="flex gap-3">
 							<button
 								type="button"
 								onClick={onAccept}
 								disabled={busy}
-								className="flex min-h-11 flex-1 cursor-pointer items-center justify-center rounded-lg bg-[var(--accent)] px-4 text-sm font-semibold text-white transition-colors duration-150 hover:bg-[var(--accent-strong)]"
-							>
-								{busy ? "Accepting..." : "Accept Invite"}
-							</button>
-							<button
-								type="button"
-								onClick={onDecline}
-								className="flex min-h-11 cursor-pointer items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--ink)] transition-colors duration-150 hover:bg-[var(--bg-alt)]"
+className="flex min-h-11 flex-1 cursor-pointer items-center justify-center rounded-lg bg-[var(--accent)] px-4 text-sm font-semibold text-white transition-colors duration-150 hover:bg-[var(--accent-strong)] disabled:cursor-wait disabled:opacity-60"
+						>
+							{busy ? "Accepting..." : "Accept Invite"}
+						</button>
+						<button
+							type="button"
+							onClick={onDecline}
+							disabled={busy}
+							className="flex min-h-11 cursor-pointer items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--ink)] transition-colors duration-150 hover:bg-[var(--bg-alt)] disabled:cursor-not-allowed disabled:opacity-60"
 							>
 								Decline
 							</button>

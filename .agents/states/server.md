@@ -1,6 +1,6 @@
 # Server State
 
-Last updated: 2026-08-16
+Last updated: 2026-08-17
 
 ## Current Boundary
 
@@ -80,6 +80,8 @@ Routes:
 
 Invite bearer tokens are random URL-safe values returned once. Only the SHA-256 hash and a safe prefix are persisted. Personal teams cannot issue or accept invites. Invite acceptance locks the invite and atomically inserts membership and marks the invite accepted.
 
+Request logging redacts invite tokens: the Fastify `req` serializer masks the 43-character token segment in `/api/invites/:token/*` logged URLs (`apps/server/src/app.ts`, `redactInviteTokenUrl`), honoring the db-schema "never stored or logged" contract.
+
 ## Database State
 
 - Migration `0006` replaces plaintext invite-token storage with unique `token_hash` and safe `token_prefix` columns. The generated SQL has been reviewed; apply it with `pnpm db:migrate` in each environment.
@@ -102,7 +104,7 @@ pnpm db:migrate
 
 Latest results:
 
-- Vitest: 11 files, 120 tests passed.
+- Vitest: 11 files, 121 tests passed.
 - Typecheck: passed.
 - Build: passed.
 

@@ -30,6 +30,7 @@ describe("username utilities", () => {
 		expect(deriveUsername(undefined, "Priya Patel")).toBe("priya");
 		expect(deriveUsername(undefined, undefined)).toBe("");
 		expect(deriveUsername(".@acme.com")).toBe("");
+		expect(deriveUsername("ab@acme.com")).toBe("");
 	});
 });
 
@@ -78,5 +79,45 @@ describe("onboarding API", () => {
 				body: JSON.stringify({ username: "alice" }),
 			}),
 		);
+	});
+
+	it("maps the shared server error envelope into an ApiError", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn().mockResolvedValue(
+				new Response(
+					JSON.stringify({
+						error: {
+							code: "VALIDATION_ERROR",
+							message: "Invalid input",
+							details: [
+								{
+									instancePath: "/username",
+									keyword: "minLength",
+									message: "must be at least 3 characters",
+								},
+							],
+						},
+					}),
+					{
+						status: 422,
+						headers: { "Content-Type": "application/json" },
+					},
+				),
+			),
+		);
+
+		await expect(checkUsernameAvailability("alice")).rejects.toMatchObject({
+			code: "VALIDATION_ERROR",
+			message: "Invalid input",
+			status: 422,
+			details: [
+				{
+					instancePath: "/username",
+					keyword: "minLength",
+					message: "must be at least 3 characters",
+				},
+			],
+		} satisfies Partial<ApiError>);
 	});
 });

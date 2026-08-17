@@ -203,7 +203,7 @@ export function OnboardingScreen() {
 								<button
 									type="button"
 									onClick={() => void retryAvailability()}
-									className="font-semibold underline underline-offset-2"
+									className="font-semibold text-[var(--accent)] underline underline-offset-2 hover:text-[var(--accent-strong)]"
 								>
 									Retry
 								</button>

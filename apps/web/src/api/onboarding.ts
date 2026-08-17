@@ -40,7 +40,8 @@ export function deriveUsername(email: string | undefined, name?: string) {
 	}
 	const cleaned = raw.toLowerCase().replace(/[^a-z0-9_-]+/g, "");
 	if (!cleaned || !/^[a-z0-9]/.test(cleaned)) return "";
-	return cleaned.slice(0, 30);
+	const candidate = cleaned.slice(0, 30);
+	return candidate.length >= 3 ? candidate : "";
 }
 
 function isUsernameAvailability(value: unknown): value is UsernameAvailability {

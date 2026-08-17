@@ -1,6 +1,6 @@
 # Veridex Frontend Handoff
 
-Updated: 2026-08-16
+Updated: 2026-08-17
 
 ## Current State
 
@@ -21,7 +21,7 @@ From `apps/web/`:
 
 - `pnpm typecheck` passed.
 - `pnpm lint` passed.
-- `pnpm test` passed: 29 tests across 9 files.
+- `pnpm test` passed: 32 tests across 9 files.
 - `pnpm build` passed.
 - Agent Browser verified: landing page, login page, protected route redirect to `/login`, invalid invite token shows "Invite unavailable", valid-format non-existent invite shows "Invite unavailable" (404), OAuth button error handling (toast on 404 provider-not-configured), root guard redirects unauthenticated `/dashboard` to `/login`, root guard redirects unauthenticated `/teams/:id/settings` to `/login`.
 - Build warning remains: main JS chunk approximately 689 KB before gzip, approximately 210 KB gzip. Route code splitting is a future optimization.
@@ -75,6 +75,16 @@ The implemented server onboarding, team, and invite slices are now wired up on t
 - Session query test in `apps/web/src/queries/session.test.ts`.
 - Social sign-in response parsing narrows unknown JSON before reading Better Auth fields, so malformed success responses surface as typed `ApiError` failures instead of raw `TypeError` exceptions.
 - Username availability changes expose readable text through a polite live region; status icons remain decorative.
+
+### CodeRabbit fixes (PR #3 worthies, applied 2026-08-17)
+- `apps/web/src/api/auth.test.ts` — added open-redirect sanitizer tests (`//evil.com` and non-root-relative paths fall back to `${origin}/dashboard`).
+- `apps/web/src/api/onboarding.test.ts` — added test asserting the shared server error envelope maps into `ApiError` fields; derive test covers the 3-char minimum (`deriveUsername("ab@acme.com")` → `""`).
+- `apps/web/src/api/onboarding.ts` — `deriveUsername` now enforces the 3-character minimum of `USERNAME_PATTERN`.
+- `apps/web/src/components/app/AppShell.tsx` — `switchTeam` no longer routes server team ids through the fixture store.
+- `apps/web/src/components/app/Avatar.tsx` — image failure state resets when `imageUrl` changes (tracked per URL).
+- `apps/web/src/components/screens/InviteAcceptScreen.tsx` — email line only rendered when `inviteEmail` is present; Accept/Decline buttons gain disabled states (`disabled:cursor-wait` / `disabled:cursor-not-allowed disabled:opacity-60`) so Decline cannot race the in-flight accept POST.
+- `apps/web/src/components/screens/OnboardingScreen.tsx` — availability Retry button uses the accent color instead of inheriting the `--block` status color.
+- `apps/web/src/stores/demo-store.ts` — `importDemoIssues` validates `targetStatuses` against `allowedTransitions` before writing; `changeIssueStatus` guards against unknown persisted statuses.
 
 ## Remaining Backend Work
 

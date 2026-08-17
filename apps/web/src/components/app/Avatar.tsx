@@ -10,8 +10,8 @@ interface AvatarProps {
 }
 
 export function Avatar({ initials, gradient, name, imageUrl, className }: AvatarProps) {
-	const [imageFailed, setImageFailed] = useState(false);
-	const showImage = Boolean(imageUrl) && !imageFailed;
+	const [imageFailedUrl, setImageFailedUrl] = useState<string | undefined>();
+	const showImage = Boolean(imageUrl) && imageFailedUrl !== imageUrl;
 
 	return (
 		<span
@@ -29,7 +29,7 @@ export function Avatar({ initials, gradient, name, imageUrl, className }: Avatar
 					alt=""
 					className="size-full object-cover"
 					referrerPolicy="no-referrer"
-					onError={() => setImageFailed(true)}
+					onError={() => setImageFailedUrl(imageUrl)}
 				/>
 			) : (
 				initials

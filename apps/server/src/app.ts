@@ -1,4 +1,7 @@
-import Fastify, { type FastifyInstance } from "fastify";
+import Fastify, {
+	type FastifyInstance,
+	type FastifyRequest,
+} from "fastify";
 import { parseEnvironment, type Environment } from "./config.js";
 import { AppError } from "./lib/errors.js";
 import { helmetPlugin } from "./plugins/helmet.js";
@@ -71,12 +74,38 @@ function getValidationDetails(error: unknown) {
 	});
 }
 
+const inviteTokenPathPattern = /\/api\/invites\/[A-Za-z0-9_-]{43}/;
+
+export function redactInviteTokenUrl(url: string) {
+	return url.replace(inviteTokenPathPattern, "/api/invites/[REDACTED]");
+}
+
+function requestLogSerializer(request: FastifyRequest) {
+	const acceptVersion = request.headers["accept-version"];
+	return {
+		method: request.method,
+		url: redactInviteTokenUrl(request.url),
+		version:
+			typeof acceptVersion === "string" ? acceptVersion : undefined,
+		host: request.host,
+		remoteAddress: request.ip,
+		remotePort: request.socket?.remotePort,
+	};
+}
+
 export function buildApp(
 	environment: Environment = parseEnvironment(process.env),
 	options: BuildAppOptions = {},
 ): FastifyInstance {
 	const app = Fastify({
-		logger: environment.NODE_ENV !== "test",
+		logger:
+			environment.NODE_ENV === "test"
+				? false
+				: {
+						serializers: {
+							req: requestLogSerializer,
+						},
+					},
 		trustProxy: environment.TRUST_PROXY,
 	});
 

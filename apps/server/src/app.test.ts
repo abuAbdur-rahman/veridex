@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildApp } from "./app.js";
+import { buildApp, redactInviteTokenUrl } from "./app.js";
 import type { Environment } from "./config.js";
 import { createDb } from "./db/client.js";
 import { AppError } from "./lib/errors.js";
@@ -40,6 +40,16 @@ describe("Veridex server", () => {
 			status: "ok",
 			service: "veridex-server",
 		});
+	});
+
+	it("redacts invite tokens from request log URLs", () => {
+		const token = "a".repeat(43);
+		expect(redactInviteTokenUrl(`/api/invites/${token}/validate`)).toBe(
+			"/api/invites/[REDACTED]/validate",
+		);
+		expect(redactInviteTokenUrl("/api/teams/abc/invites")).toBe(
+			"/api/teams/abc/invites",
+		);
 	});
 
 	it("adds security headers", async () => {
