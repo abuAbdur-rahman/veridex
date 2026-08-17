@@ -16,9 +16,7 @@ export function LoginScreen({ redirectTo = "/dashboard" }: { redirectTo?: string
 		try {
 			await signInWithProvider(provider, redirectTo);
 		} catch (error) {
-			toast.error(
-				error instanceof ApiError ? error.message : "Could not start sign-in flow.",
-			);
+			toast.error(error instanceof ApiError ? error.message : "Could not start sign-in flow.");
 			setPendingProvider(null);
 		}
 	}
@@ -34,8 +32,7 @@ export function LoginScreen({ redirectTo = "/dashboard" }: { redirectTo?: string
 					Track bugs like it's not <span className="text-[var(--accent)]">1997</span>.
 				</h1>
 				<p className="mb-8 text-sm text-[var(--ink-soft)]">
-					Sign in with the identity your team already trusts. No passwords, no
-					spreadsheets.
+					Sign in with the identity your team already trusts. No passwords, no spreadsheets.
 				</p>
 				<div className="flex flex-col gap-3">
 					<button

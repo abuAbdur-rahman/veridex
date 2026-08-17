@@ -28,7 +28,13 @@ describe("invites API", () => {
 
 	it("accepts an invite using the authenticated session", async () => {
 		const token = "b".repeat(43);
-		const team = { id: "team-1", name: "Acme", slug: "acme", isPersonal: false, teamRole: "member" };
+		const team = {
+			id: "team-1",
+			name: "Acme",
+			slug: "acme",
+			isPersonal: false,
+			teamRole: "member",
+		};
 		const fetchMock = vi.fn().mockResolvedValue(Response.json(team));
 		vi.stubGlobal("fetch", fetchMock);
 

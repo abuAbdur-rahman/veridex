@@ -41,10 +41,7 @@ export function KanbanColumn({
 				<h3 className="font-[var(--mono)] text-xs font-semibold uppercase tracking-[0.02em] text-[var(--ink-soft)]">
 					{title}
 				</h3>
-				<span
-					className={cnCount(accent)}
-					title={`${count} issues`}
-				>
+				<span className={cnCount(accent)} title={`${count} issues`}>
 					{count}
 				</span>
 			</header>
@@ -59,9 +56,7 @@ export function KanbanColumn({
 					/>
 				))}
 				{issues.length === 0 ? (
-					<p className="py-6 text-center text-xs text-[var(--ink-soft)]">
-						Nothing here
-					</p>
+					<p className="py-6 text-center text-xs text-[var(--ink-soft)]">Nothing here</p>
 				) : null}
 			</div>
 		</section>

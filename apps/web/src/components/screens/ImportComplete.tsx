@@ -44,7 +44,10 @@ export function ImportComplete({
 						<span aria-hidden="true">{showErrors ? "▴" : "▾"}</span>
 					</button>
 					{showErrors ? (
-						<ul id="import-errors" className="overflow-hidden rounded-[10px] border border-[var(--line)] bg-[var(--surface)] text-left">
+						<ul
+							id="import-errors"
+							className="overflow-hidden rounded-[10px] border border-[var(--line)] bg-[var(--surface)] text-left"
+						>
 							{errors.map((error) => (
 								<li
 									key={error.row}

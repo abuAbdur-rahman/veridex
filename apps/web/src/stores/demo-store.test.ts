@@ -32,15 +32,16 @@ describe("demo store", () => {
 		expect(store.getState().issueHistory[issue.id] ?? []).toHaveLength(originalHistory.length);
 
 		const missingNote = store.getState().changeIssueStatus(issue.id, "in_progress", "   ");
-		expect(missingNote).toEqual({ ok: false, error: "A note is required when moving an issue backward" });
+		expect(missingNote).toEqual({
+			ok: false,
+			error: "A note is required when moving an issue backward",
+		});
 
 		const valid = store
 			.getState()
 			.changeIssueStatus(issue.id, "in_progress", "  Still broken on Safari  ");
 		expect(valid.ok).toBe(true);
-		expect(store.getState().issues.find(({ id }) => id === issue.id)?.status).toBe(
-			"in_progress",
-		);
+		expect(store.getState().issues.find(({ id }) => id === issue.id)?.status).toBe("in_progress");
 		expect(store.getState().issueHistory[issue.id]).toHaveLength(originalHistory.length + 1);
 		expect(store.getState().issueHistory[issue.id]?.at(-1)).toMatchObject({
 			issueId: issue.id,
@@ -69,7 +70,9 @@ describe("demo store", () => {
 		for (const status of ["in_progress", "in_qa", "verified"] as const) {
 			expect(store.getState().changeIssueStatus(created.value.id, status).ok).toBe(true);
 		}
-		expect(store.getState().issues.find(({ id }) => id === created.value.id)?.status).toBe("verified");
+		expect(store.getState().issues.find(({ id }) => id === created.value.id)?.status).toBe(
+			"verified",
+		);
 		expect(store.getState().issueHistory[created.value.id]).toHaveLength(4);
 	});
 
@@ -147,11 +150,13 @@ describe("demo store", () => {
 		expect(existing).toBeDefined();
 		if (!existing) return;
 
-		expect(store.getState().addProjectMember({
-			projectId: existing.projectId,
-			name: existing.name.toUpperCase(),
-			role: "dev",
-		})).toEqual({ ok: false, error: "Member already belongs to this project" });
+		expect(
+			store.getState().addProjectMember({
+				projectId: existing.projectId,
+				name: existing.name.toUpperCase(),
+				role: "dev",
+			}),
+		).toEqual({ ok: false, error: "Member already belongs to this project" });
 		expect(store.getState().saveProfile({ username: "x" }).ok).toBe(false);
 		expect(store.getState().saveProfile({ username: "  sarah_qa  " })).toMatchObject({
 			ok: true,
@@ -176,7 +181,11 @@ describe("demo store", () => {
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
 		expect(result.value.every((issue) => issue.status === "in_qa")).toBe(true);
-		expect(result.value.every((issue) => store.getState().issueHistory[issue.id]?.[0]?.source === "import")).toBe(true);
+		expect(
+			result.value.every(
+				(issue) => store.getState().issueHistory[issue.id]?.[0]?.source === "import",
+			),
+		).toBe(true);
 	});
 
 	it("supports moving a verified issue backward into QA", () => {
@@ -186,7 +195,9 @@ describe("demo store", () => {
 		if (!issue) return;
 
 		expect(store.getState().changeIssueStatus(issue.id, "in_qa").ok).toBe(false);
-		expect(store.getState().changeIssueStatus(issue.id, "in_qa", "Verification needs another pass").ok).toBe(true);
+		expect(
+			store.getState().changeIssueStatus(issue.id, "in_qa", "Verification needs another pass").ok,
+		).toBe(true);
 		expect(store.getState().issues.find(({ id }) => id === issue.id)?.status).toBe("in_qa");
 	});
 });

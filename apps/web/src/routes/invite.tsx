@@ -53,13 +53,15 @@ function InviteAcceptRoute() {
 		}
 	}
 
-	return <InviteAcceptScreen
-		teamName={inviteQuery.data?.teamName ?? "Team"}
-		inviteEmail={inviteQuery.data?.email}
-		state={state}
-		busy={busy}
-		error={acceptError || validationError?.message}
-		onAccept={() => void handleAccept()}
-		onDecline={() => void navigate({ to: "/" })}
-	/>;
+	return (
+		<InviteAcceptScreen
+			teamName={inviteQuery.data?.teamName ?? "Team"}
+			inviteEmail={inviteQuery.data?.email}
+			state={state}
+			busy={busy}
+			error={acceptError || validationError?.message}
+			onAccept={() => void handleAccept()}
+			onDecline={() => void navigate({ to: "/" })}
+		/>
+	);
 }
