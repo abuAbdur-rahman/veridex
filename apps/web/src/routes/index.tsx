@@ -18,7 +18,7 @@ export function LandingPage() {
 	return (
 		<>
 			<Navbar />
-			<main>
+			<main className="landing-page">
 				<Hero />
 				<Problem />
 				<Workflow />

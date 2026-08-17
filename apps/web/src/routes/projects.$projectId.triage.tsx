@@ -10,5 +10,7 @@ export const ProjectTriageRoute = createRoute({
 
 function ProjectTriageView() {
 	const { projectId } = ProjectTriageRoute.useParams();
-	return <Navigate to="/projects/$projectId" params={{ projectId }} search={{ view: "qa" }} replace />;
+	return (
+		<Navigate to="/projects/$projectId" params={{ projectId }} search={{ view: "qa" }} replace />
+	);
 }

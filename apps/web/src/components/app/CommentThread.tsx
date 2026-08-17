@@ -37,9 +37,7 @@ export function CommentThread({ comments }: CommentThreadProps) {
 										{formatRelativeTime(comment.at)}
 									</span>
 								</p>
-								<p className="mt-1 text-[13px] leading-[1.5] text-[var(--ink)]">
-									{comment.body}
-								</p>
+								<p className="mt-1 text-[13px] leading-[1.5] text-[var(--ink)]">{comment.body}</p>
 							</div>
 						</li>
 					))}

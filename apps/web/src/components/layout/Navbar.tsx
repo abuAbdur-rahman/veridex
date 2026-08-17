@@ -6,11 +6,7 @@ export function Navbar() {
 	return (
 		<header className="nav">
 			<div className="mx-auto flex min-h-16 w-full max-w-[1120px] items-center justify-between px-[18px] sm:min-h-[72px] sm:px-7">
-				<Link
-					className="inline-flex no-underline"
-					to="/"
-					aria-label="Veridex home"
-				>
+				<Link className="inline-flex no-underline" to="/" aria-label="Veridex home">
 					<LogoMark />
 				</Link>
 				<nav className="links" aria-label="Primary navigation">

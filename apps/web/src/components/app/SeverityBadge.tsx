@@ -2,10 +2,7 @@ import { AlertOctagon, ArrowUp, ChevronDown, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Severity } from "@/lib/veridex-types";
 
-const severityConfig: Record<
-	Severity,
-	{ label: string; cls: string; icon?: typeof Minus }
-> = {
+const severityConfig: Record<Severity, { label: string; cls: string; icon?: typeof Minus }> = {
 	low: {
 		label: "Low",
 		cls: "border border-[var(--line)] text-[var(--ink-soft)]",

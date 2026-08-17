@@ -10,9 +10,9 @@ export const LoginRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/login",
 	validateSearch: (search: Record<string, unknown>): LoginSearch => ({
-		...(typeof search.redirect === "string"
-			&& search.redirect.startsWith("/join/team/")
-			&& !search.redirect.startsWith("//")
+		...(typeof search.redirect === "string" &&
+		search.redirect.startsWith("/join/team/") &&
+		!search.redirect.startsWith("//")
 			? { redirect: search.redirect }
 			: {}),
 	}),

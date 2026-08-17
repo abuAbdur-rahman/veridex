@@ -1,8 +1,4 @@
-import {
-	createRootRouteWithContext,
-	Outlet,
-	redirect,
-} from "@tanstack/react-router";
+import { createRootRouteWithContext, Outlet, redirect } from "@tanstack/react-router";
 import type { QueryClient } from "@tanstack/react-query";
 import { RootLayout } from "@/components/app/AppShell";
 import { meQueryOptions } from "@/queries/session";
@@ -26,7 +22,11 @@ function isOnboarded(me: MeResponse): boolean {
 }
 
 function RootView() {
-	return <RootLayout><Outlet /></RootLayout>;
+	return (
+		<RootLayout>
+			<Outlet />
+		</RootLayout>
+	);
 }
 
 /**
