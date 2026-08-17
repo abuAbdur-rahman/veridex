@@ -3,7 +3,7 @@ import { useState } from "react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { SectionLabel } from "@/components/app/FormField";
 import { NewTokenModal } from "@/components/screens/NewTokenModal";
-import { useDemoStore } from "@/lib/demo-store";
+import { useDemoStore } from "@/stores/demo-store";
 import { mcpProjectAccess, mcpTools } from "@/lib/veridex-fixtures";
 
 const endpoint = "https://api.veridex.app/mcp";

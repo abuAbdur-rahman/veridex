@@ -14,7 +14,7 @@ import { useState } from "react";
 import type { Issue, IssueStatus } from "@/lib/veridex-types";
 import { ISSUE_STATUSES } from "@/lib/veridex-types";
 import { KanbanColumn } from "@/components/app/KanbanColumn";
-import { getAllowedTransitions } from "@/lib/demo-store";
+import { getAllowedTransitions } from "@/stores/demo-store";
 
 const COLUMNS: { title: string; status: IssueStatus; accent?: boolean }[] = [
 	{ title: "Backlog", status: "backlog" },

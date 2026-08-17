@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { ProjectCard } from "@/components/app/ProjectCard";
-import { useDemoStore } from "@/lib/demo-store";
+import { useDemoStore } from "@/stores/demo-store";
 
 export function DashboardScreen() {
 	const navigate = useNavigate();

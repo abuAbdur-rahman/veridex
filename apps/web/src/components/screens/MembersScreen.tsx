@@ -2,7 +2,7 @@ import { Plus, UserMinus, Users } from "lucide-react";
 import { useState } from "react";
 import { Avatar } from "@/components/app/Avatar";
 import { PageHeader } from "@/components/app/PageHeader";
-import { useDemoStore } from "@/lib/demo-store";
+import { useDemoStore } from "@/stores/demo-store";
 import { PROJECT_ROLES, type ProjectRole } from "@/lib/veridex-types";
 
 interface MembersScreenProps {
