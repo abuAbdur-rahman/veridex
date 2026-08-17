@@ -37,6 +37,7 @@ const mockIssue = {
 	stepsToReproduce: null,
 	expectedResult: null,
 	actualResult: null,
+	imageUrl: null,
 	projectId: "proj_1",
 	reporterId: "usr_sarah",
 	assigneeId: null,

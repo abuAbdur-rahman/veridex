@@ -8,6 +8,7 @@ import {
 	listIssues,
 	updateIssue,
 	updateIssueStatus,
+	uploadIssueImage,
 	type CreateIssueInput,
 	type IssueFilters,
 	type UpdateIssueInput,
@@ -62,6 +63,11 @@ export function useCreateIssue(projectId: string) {
 	return useMutation({
 		mutationFn: (input: CreateIssueInput) => createIssue(projectId, input),
 		onSuccess: () => refresh(),
+	});
+}
+export function useUploadIssueImage(projectId: string) {
+	return useMutation({
+		mutationFn: (file: File) => uploadIssueImage(projectId, file),
 	});
 }
 export function useUpdateIssue(projectId: string, issueId: string) {

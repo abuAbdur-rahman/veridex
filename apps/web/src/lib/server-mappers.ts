@@ -46,6 +46,7 @@ export function mapServerIssue(
 		status: value.status,
 		severity: value.severity,
 		description: value.description ?? undefined,
+		imageUrl: value.imageUrl ?? undefined,
 		environment: environment(value.environment),
 		stepsToReproduce: value.stepsToReproduce?.split("\n").filter(Boolean),
 		reporter: person(value.reporterId, user, members)!,

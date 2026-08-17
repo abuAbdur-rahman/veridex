@@ -26,6 +26,7 @@ export const issues = pgTable(
 		stepsToReproduce: text("steps_to_reproduce"),
 		expectedResult: text("expected_result"),
 		actualResult: text("actual_result"),
+		imageUrl: text("image_url"),
 		projectId: uuid("project_id")
 			.notNull()
 			.references(() => project.id, { onDelete: "cascade" }),

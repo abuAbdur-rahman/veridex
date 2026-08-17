@@ -60,7 +60,7 @@ export function ImportMapping({
 											onChange={(event) => onColumnChange(i, event.target.value)}
 											className="min-w-[180px] rounded-lg border border-[var(--line)] bg-[var(--bg)] px-3 py-2 text-[13px] text-[var(--ink)] outline-none transition-[border-color,box-shadow] duration-150 focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-ring)]"
 										>
-											{["Title", "Severity", "Tags", "Environment.device"].map((field) => (
+											{["Title", "Severity", "Tags", "Environment.device", "image_url"].map((field) => (
 												<option key={field} value={field}>
 													{field}
 												</option>

@@ -20,6 +20,7 @@ const issue = {
 	stepsToReproduce: null,
 	expectedResult: null,
 	actualResult: null,
+	imageUrl: null,
 	projectId: "p1",
 	reporterId: "u1",
 	assigneeId: null,

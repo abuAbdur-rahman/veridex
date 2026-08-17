@@ -19,6 +19,7 @@ export interface ServerIssue {
 	stepsToReproduce: string | null;
 	expectedResult: string | null;
 	actualResult: string | null;
+	imageUrl: string | null;
 	projectId: string;
 	reporterId: string;
 	assigneeId: string | null;
@@ -59,12 +60,13 @@ export interface CreateIssueInput {
 	assigneeId?: string;
 	qaAssigneeId?: string;
 	testCaseId?: string;
+	imageUrl?: string;
 }
 export interface UpdateIssueInput
 	extends Partial<
 		Omit<
 			CreateIssueInput,
-			"assigneeId" | "qaAssigneeId" | "testCaseId" | "description" | "environment"
+			"assigneeId" | "qaAssigneeId" | "testCaseId" | "description" | "environment" | "imageUrl"
 		>
 	> {
 	assigneeId?: string | null;
@@ -72,6 +74,7 @@ export interface UpdateIssueInput
 	testCaseId?: string | null;
 	description?: string | null;
 	environment?: IssueEnvironment | null;
+	imageUrl?: string | null;
 }
 
 const statuses = new Set<IssueStatus>(["backlog", "in_progress", "in_qa", "verified"]);
@@ -99,6 +102,7 @@ export function isServerIssue(v: unknown): v is ServerIssue {
 		nullableString(v.stepsToReproduce) &&
 		nullableString(v.expectedResult) &&
 		nullableString(v.actualResult) &&
+		nullableString(v.imageUrl) &&
 		typeof v.projectId === "string" &&
 		typeof v.reporterId === "string" &&
 		nullableString(v.assigneeId) &&
@@ -143,6 +147,16 @@ export function createIssue(projectId: string, input: CreateIssueInput) {
 		method: "POST",
 		body: JSON.stringify(input),
 	});
+}
+export function uploadIssueImage(projectId: string, file: File) {
+	const body = new FormData();
+	body.append("image", file);
+	return apiRequest(
+		`/api/projects/${encodeURIComponent(projectId)}/issue-images`,
+		(value): value is { imageUrl: string } =>
+			isRecord(value) && typeof value.imageUrl === "string",
+		{ method: "POST", body },
+	);
 }
 export function getIssue(projectId: string, issueId: string) {
 	return apiRequest(

@@ -17,9 +17,13 @@ import { teamRoutes } from "./routes/teams.js";
 import { inviteRoutes } from "./routes/invites.js";
 import { projectRoutes } from "./routes/projects.js";
 import { issueRoutes } from "./routes/issues.js";
+import multipart from "@fastify/multipart";
+import { createImageStorage, type ImageStorage } from "./lib/r2.js";
+import { issueImageRoutes } from "./routes/issue-images.js";
 
 export interface BuildAppOptions {
 	db?: Database;
+	imageStorage?: ImageStorage;
 }
 
 const fastifyClientErrors: Readonly<
@@ -116,6 +120,7 @@ export function buildApp(
 	app.decorate("config", environment);
 	app.decorate("db", db);
 	app.decorate("auth", createAuth(db, environment));
+	app.decorate("imageStorage", options.imageStorage ?? createImageStorage(environment));
 	app.addHook("onClose", async () => {
 		await db.$client.end();
 	});
@@ -151,12 +156,16 @@ export function buildApp(
 		});
 	}
 	app.register(authPlugin);
+	app.register(multipart, {
+		limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 0, parts: 1 },
+	});
 	app.register(healthRoutes);
 	app.register(onboardingRoutes);
 	app.register(teamRoutes);
 	app.register(inviteRoutes);
 	app.register(projectRoutes);
 	app.register(issueRoutes);
+	app.register(issueImageRoutes);
 
 	app.setNotFoundHandler((request, reply) => {
 		return reply.status(404).send({
