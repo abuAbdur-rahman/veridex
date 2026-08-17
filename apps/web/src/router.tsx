@@ -13,6 +13,7 @@ import { ProjectImportRoute } from "@/routes/projects.$projectId.import";
 import { TeamSettingsRoute } from "@/routes/teams.$teamId.settings";
 import { LegacySettingsRoute, ProfileRoute, SettingsRoute } from "@/routes/settings";
 import { LegacyMcpRoute, McpRoute } from "@/routes/settings.mcp";
+import { queryClient } from "@/lib/query-client";
 
 const routeTree = rootRoute.addChildren([
 	IndexRoute,
@@ -33,7 +34,10 @@ const routeTree = rootRoute.addChildren([
 	LegacyMcpRoute,
 ]);
 
-export const router = createRouter({ routeTree });
+export const router = createRouter({
+	routeTree,
+	context: { queryClient },
+});
 
 declare module "@tanstack/react-router" {
 	interface Register {

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Database } from "../db/client.js";
 import { ForbiddenError, NotFoundError, UnauthorizedError } from "./errors.js";
-import { requireProjectRole, requireSession } from "./auth.js";
+import { requireProjectRole, requireSession, requireTeamRole } from "./auth.js";
 
 const getSession = vi.fn();
 const limit = vi.fn();
@@ -94,5 +94,59 @@ describe("requireProjectRole", () => {
 		await expect(
 			requireProjectRole(request, "a1b2c3d4-0000-4000-8000-000000000001", ["qa", "admin"]),
 		).resolves.toEqual({ session, membership: adminMembership });
+	});
+});
+
+describe("requireTeamRole", () => {
+	const teamId = "a1b2c3d4-0000-4000-8000-000000000002";
+	const teamMembership = {
+		teamId,
+		userId: "user-1",
+		teamRole: "admin" as const,
+		invitedBy: "user-2",
+		joinedAt: new Date("2026-01-01T00:00:00Z"),
+	};
+
+	it("does not query membership without an active session", async () => {
+		getSession.mockResolvedValue(null);
+
+		await expect(requireTeamRole(request, teamId, ["admin"])).rejects.toBeInstanceOf(
+			UnauthorizedError,
+		);
+		expect(select).not.toHaveBeenCalled();
+	});
+
+	it("rejects a non-UUID team id without querying membership", async () => {
+		await expect(requireTeamRole(request, "not-a-uuid", ["admin"])).rejects.toBeInstanceOf(
+			NotFoundError,
+		);
+		expect(select).not.toHaveBeenCalled();
+	});
+
+	it("returns 403 for a non-member", async () => {
+		limit.mockResolvedValue([]);
+
+		await expect(requireTeamRole(request, teamId, ["admin"])).rejects.toBeInstanceOf(
+			ForbiddenError,
+		);
+		expect(where).toHaveBeenCalledOnce();
+		expect(limit).toHaveBeenCalledWith(1);
+	});
+
+	it("returns 403 for a disallowed role", async () => {
+		limit.mockResolvedValue([teamMembership]);
+
+		await expect(requireTeamRole(request, teamId, ["owner"])).rejects.toBeInstanceOf(
+			ForbiddenError,
+		);
+	});
+
+	it("returns the session and membership for an allowed role", async () => {
+		limit.mockResolvedValue([teamMembership]);
+
+		await expect(requireTeamRole(request, teamId, ["owner", "admin"])).resolves.toEqual({
+			session,
+			membership: teamMembership,
+		});
 	});
 });

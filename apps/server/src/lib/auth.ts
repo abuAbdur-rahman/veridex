@@ -4,10 +4,12 @@ import { z } from "zod";
 import type { createAuth } from "../auth/index.js";
 import type { Database } from "../db/client.js";
 import { projectMember } from "../db/schema/project.js";
-import type { projectRoleEnum } from "../db/schema/enums.js";
+import type { projectRoleEnum, teamRoleEnum } from "../db/schema/enums.js";
+import { teamMember } from "../db/schema/team.js";
 import { ForbiddenError, NotFoundError, UnauthorizedError } from "./errors.js";
 
 export type ProjectRole = (typeof projectRoleEnum.enumValues)[number];
+export type TeamRole = (typeof teamRoleEnum.enumValues)[number];
 
 interface AuthorizationRequest {
 	server: {
@@ -64,6 +66,40 @@ export async function requireProjectRole(
 		.limit(1);
 
 	if (!membership || !allowedRoles.includes(membership.role)) {
+		throw new ForbiddenError();
+	}
+
+	return { session, membership };
+}
+
+export async function requireTeamRole(
+	request: AuthorizationRequest,
+	teamId: string,
+	allowedRoles: readonly TeamRole[],
+) {
+	const session = await requireSession(request);
+	const teamIdResult = z.string().uuid().safeParse(teamId);
+	if (!teamIdResult.success) {
+		throw new NotFoundError("Team");
+	}
+	const [membership] = await request.server.db
+		.select({
+			teamId: teamMember.teamId,
+			userId: teamMember.userId,
+			teamRole: teamMember.teamRole,
+			invitedBy: teamMember.invitedBy,
+			joinedAt: teamMember.joinedAt,
+		})
+		.from(teamMember)
+		.where(
+			and(
+				eq(teamMember.teamId, teamId),
+				eq(teamMember.userId, session.user.id),
+			),
+		)
+		.limit(1);
+
+	if (!membership || !allowedRoles.includes(membership.teamRole)) {
 		throw new ForbiddenError();
 	}
 

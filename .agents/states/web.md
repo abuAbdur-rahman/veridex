@@ -1,12 +1,14 @@
 # Veridex Frontend Handoff
 
-Updated: 2026-08-15
+Updated: 2026-08-17
 
 ## Current State
 
 - Frontend implementation is fixture-backed and functional. Backend integration remains the primary unfinished product work.
 - Authenticated routes share one responsive shell in `apps/web/src/components/app/AppShell.tsx`.
-- Demo domain state lives in `apps/web/src/lib/demo-store.ts`, persisted in localStorage, with reset support. Raw MCP tokens are never persisted.
+- Demo domain state lives in `apps/web/src/stores/demo-store.ts`, persisted in localStorage, with reset support. Raw MCP tokens are never persisted.
+- Server calls are split by domain under `apps/web/src/api/`; TanStack Query integrations live under `apps/web/src/queries/`. Direct imports are preferred over barrel `index.ts` files.
+- Sonner is mounted once in `apps/web/src/providers/AppProviders.tsx`; authentication and onboarding server outcomes use toast feedback while field validation stays inline.
 - Canonical profile routes are `/profile/settings` and `/profile/mcp`; `/profile` redirects to settings. Legacy `/settings` and `/settings/mcp` redirect to the profile routes.
 - Sidebar footer has clickable avatar/profile navigation and confirmed Logout modal. Logout posts to `/api/auth/sign-out`; Vite proxies `/api` to `http://127.0.0.1:3001` in development. Redirect to `/login` occurs only after a successful response.
 - Kanban uses `@dnd-kit/core` draggable cards, droppable lifecycle columns, pointer sensor, keyboard sensor, drag overlay, invalid-target disabling, and “Move to” fallback menu. Native horizontal scrollbar is hidden but horizontal scrolling remains available.
@@ -19,26 +21,75 @@ From `apps/web/`:
 
 - `pnpm typecheck` passed.
 - `pnpm lint` passed.
-- `pnpm test` passed: 12 tests.
+- `pnpm test` passed: 32 tests across 9 files.
 - `pnpm build` passed.
-- Browser verified: pointer drag Backlog -> In Progress -> Backlog, timestamps, profile redirects, hidden scrollbar measurement, logout confirmation/cancel, and no browser errors in tested flows.
-- Build warning remains: main JS chunk approximately 633 KB before gzip, approximately 194 KB gzip. Route code splitting is a future optimization.
+- Agent Browser verified: landing page, login page, protected route redirect to `/login`, invalid invite token shows "Invite unavailable", valid-format non-existent invite shows "Invite unavailable" (404), OAuth button error handling (toast on 404 provider-not-configured), root guard redirects unauthenticated `/dashboard` to `/login`, root guard redirects unauthenticated `/teams/:id/settings` to `/login`.
+- Build warning remains: main JS chunk approximately 689 KB before gzip, approximately 210 KB gzip. Route code splitting is a future optimization.
 
 ## Key Files
 
-- `apps/web/src/components/app/AppShell.tsx`: shared shell, profile footer, logout confirmation, logo, route-aware header.
-- `apps/web/src/components/screens/BoardScreen.tsx`: DnD context and lifecycle columns.
-- `apps/web/src/components/app/KanbanCard.tsx`: draggable card and keyboard-visible drag handle.
-- `apps/web/src/components/app/KanbanColumn.tsx`: droppable status column.
-- `apps/web/src/lib/demo-store.ts`: lifecycle transitions and demo actions.
+- `apps/web/src/components/app/AppShell.tsx`: shared shell, server-backed teams sidebar, profile footer, logout confirmation, team creation.
+- `apps/web/src/api/teams.ts`: server team/member/invite adapters with runtime validation.
+- `apps/web/src/api/invites.ts`: server invite validation and acceptance adapters.
+- `apps/web/src/queries/teams.ts`: TanStack Query hooks for teams and team members.
+- `apps/web/src/routes/invite.tsx`: public invite validation and acceptance flow.
+- `apps/web/src/routes/login.tsx`: login with invite redirect preservation.
+- `apps/web/src/components/screens/TeamSettingsScreen.tsx`: server-backed team members and invite creation.
+- `apps/web/src/components/screens/InviteAcceptScreen.tsx`: invite state display with loading/error handling.
+- `apps/web/src/components/screens/BoardScreen.tsx`: DnD context and lifecycle columns (fixture-backed).
+- `apps/web/src/stores/demo-store.ts`: lifecycle transitions and demo actions (fixture-only).
 - `apps/web/src/lib/format-time.ts`: mutation timestamp formatting.
 - `apps/web/src/router.tsx`: route tree including canonical profile routes and legacy redirects.
 - `apps/web/vite.config.ts`: `/api` development proxy to backend port 3001.
 
+## Wireup (completed)
+
+The implemented server onboarding, team, and invite slices are now wired up on the client:
+
+### Auth/session/onboarding (existing)
+- `apps/web/src/api/client.ts` — shared cookie-authenticated request boundary, server error parsing, and malformed-response handling.
+- `apps/web/src/api/auth.ts` — Better Auth social sign-in via `POST /api/auth/sign-in/social` with safe callback path validation.
+- `apps/web/src/api/session.ts` — runtime-validated `GET /api/me` contract and profile projection helpers.
+- `apps/web/src/api/onboarding.ts` — runtime-validated username availability and onboarding completion contracts plus username helpers matching the server's `^[a-z0-9][a-z0-9_-]{2,29}$` rule.
+- `apps/web/src/lib/query-client.ts` — shared `QueryClient` instance.
+- `apps/web/src/queries/session.ts` — `meQueryOptions`, `useMe()`, `meQueryKey`, and onboarding cache projection.
+- `apps/web/src/components/ui/toaster.tsx` — theme-aware Sonner host mounted once by `AppProviders`.
+- `apps/web/src/router.tsx` — router context provides `{ queryClient }`.
+- `apps/web/src/routes/__root.tsx` — root route guard (`beforeLoad`) reads `GET /api/me` through the shared query cache and redirects: no session → `/login`, session but not onboarded → `/onboarding`, onboarded on `/onboarding` → `/dashboard`. Public routes (landing, login, invite) are skipped so the landing page works without a backend.
+- `apps/web/src/components/screens/LoginScreen.tsx` — OAuth buttons POST to `/api/auth/sign-in/social`, prevent concurrent requests, surface Better Auth errors safely, and redirect the browser to the provider URL.
+- `apps/web/src/components/screens/OnboardingScreen.tsx` — username pre-filled from provider data, live availability check via debounced `GET /api/users/check-username?q=`, stale and failed checks are handled explicitly, submission calls `POST /api/onboarding/complete`, then updates the cached session projection from the committed response before navigating to `/dashboard`.
+- `apps/web/src/components/app/AppShell.tsx` — sidebar profile derives from `useMe()` instead of the fixture store; sidebar teams use `useTeams()` with `me?.teams` fallback.
+
+### Teams/invites (new)
+- `apps/web/src/api/teams.ts` — runtime-validated `ServerTeam`, `ServerTeamMember`, `TeamInvite` interfaces; `listTeams()`, `createTeam()`, `listTeamMembers()`, `createTeamInvite()` adapters.
+- `apps/web/src/api/invites.ts` — runtime-validated `ValidatedInvite` interface; `validateInvite(token)`, `acceptInvite(token)` adapters.
+- `apps/web/src/queries/teams.ts` — `teamsQueryOptions`, `teamMembersQueryOptions`, `useTeams()`, `useTeamMembers()` hooks.
+- `apps/web/src/routes/login.tsx` — `validateSearch` for optional `redirect` search param (safe path validation: must start with `/join/team/`).
+- `apps/web/src/routes/invite.tsx` — public invite route: validates token via `GET /api/invites/:token/validate`, handles expired/accepted/not-found states; accept calls `POST /api/invites/:token/accept`, invalidates teams cache, navigates dashboard; unauthenticated user redirected to `/login?redirect=/join/team/{token}`.
+- `apps/web/src/components/screens/InviteAcceptScreen.tsx` — accepts `state: "loading" | "valid" | "expired" | "accepted" | "invalid"`, shows invite email, busy/error states, loading spinner.
+- `apps/web/src/components/screens/TeamSettingsScreen.tsx` — uses `useTeams()` and `useTeamMembers(teamId)`, shows real team members, invite form with returned token link, note about missing pending-invite listing/revoke.
+- `apps/web/src/components/app/AppShell.tsx` — sidebar uses `useTeams()` for server teams, `handleCreateTeam()` with slug prompt, team dropdown with "Create team" option.
+
+### Test coverage
+- Focused adapter tests in `apps/web/src/api/auth.test.ts`, `api/teams.test.ts`, `api/invites.test.ts`, `api/onboarding.test.ts`, `api/session.test.ts`.
+- Session query test in `apps/web/src/queries/session.test.ts`.
+- Social sign-in response parsing narrows unknown JSON before reading Better Auth fields, so malformed success responses surface as typed `ApiError` failures instead of raw `TypeError` exceptions.
+- Username availability changes expose readable text through a polite live region; status icons remain decorative.
+
+### CodeRabbit fixes (PR #3 worthies, applied 2026-08-17)
+- `apps/web/src/api/auth.test.ts` — added open-redirect sanitizer tests (`//evil.com` and non-root-relative paths fall back to `${origin}/dashboard`).
+- `apps/web/src/api/onboarding.test.ts` — added test asserting the shared server error envelope maps into `ApiError` fields; derive test covers the 3-char minimum (`deriveUsername("ab@acme.com")` → `""`).
+- `apps/web/src/api/onboarding.ts` — `deriveUsername` now enforces the 3-character minimum of `USERNAME_PATTERN`.
+- `apps/web/src/components/app/AppShell.tsx` — `switchTeam` no longer routes server team ids through the fixture store.
+- `apps/web/src/components/app/Avatar.tsx` — image failure state resets when `imageUrl` changes (tracked per URL).
+- `apps/web/src/components/screens/InviteAcceptScreen.tsx` — email line only rendered when `inviteEmail` is present; Accept/Decline buttons gain disabled states (`disabled:cursor-wait` / `disabled:cursor-not-allowed disabled:opacity-60`) so Decline cannot race the in-flight accept POST.
+- `apps/web/src/components/screens/OnboardingScreen.tsx` — availability Retry button uses the accent color instead of inheriting the `--block` status color.
+- `apps/web/src/stores/demo-store.ts` — `importDemoIssues` validates `targetStatuses` against `allowedTransitions` before writing; `changeIssueStatus` guards against unknown persisted statuses.
+
 ## Remaining Backend Work
 
-- Align backend issue service transition rules with the frontend four-state lifecycle. The server enum/migrations now match (`backlog`, `in_progress`, `in_qa`, `verified`; migration `0005` removes `closed`).
-- Integrate the implemented Better Auth session, onboarding, and project-role foundations with the frontend. Teams/invites CRUD, issue API persistence, WebSockets, import parsing/jobs, API token hashing, MCP tools, and their route-level authorization remain unimplemented.
+- Team/invite integration complete. Server lacks pending-invite listing and revoke endpoints; team settings shows this as a note.
+- Issue API persistence, WebSockets, import parsing/jobs, API token hashing, MCP tools, and their route-level authorization remain unimplemented on the server. The dashboard project creation, board, and MCP screens remain fixture-backed until their corresponding client integrations exist.
 - Replace Zustand demo actions with TanStack Query/API mutations without changing screen contracts.
 
 ## Do Not Regress

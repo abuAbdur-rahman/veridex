@@ -277,7 +277,7 @@ function storeCreator(
 			changeIssueStatus: (issueId, toStatus, note) => {
 				const issue = get().issues.find(({ id }) => id === issueId);
 				if (!issue) return { ok: false, error: "Issue not found" };
-				if (!allowedTransitions[issue.status].includes(toStatus)) {
+				if (!(allowedTransitions[issue.status] ?? []).includes(toStatus)) {
 					return { ok: false, error: "Invalid status transition" };
 				}
 				const trimmedNote = note?.trim();
@@ -408,6 +408,9 @@ function storeCreator(
 			importDemoIssues: (projectId, options) => {
 				if (!get().projects.some(({ id }) => id === projectId)) {
 					return { ok: false, error: "Project not found" };
+				}
+				if (!options.targetStatuses.every((status) => Object.hasOwn(allowedTransitions, status))) {
+					return { ok: false, error: "Invalid import status" };
 				}
 				const imported: Issue[] = [];
 				const demoRows: Array<readonly [string, Severity]> = [

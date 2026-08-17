@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
 	ChevronsUpDown,
@@ -5,6 +6,7 @@ import {
 	LayoutGrid,
 	LogOut,
 	Menu,
+	Plus,
 	Search,
 	Settings,
 	Upload,
@@ -34,7 +36,11 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { useDemoStore } from "@/lib/demo-store";
+import { deriveProfile, type DerivedProfile } from "@/api/session";
+import { createTeam } from "@/api/teams";
+import { useMe } from "@/queries/session";
+import { teamsQueryKey, useTeams } from "@/queries/teams";
+import { useDemoStore } from "@/stores/demo-store";
 import type { RoleView } from "@/lib/veridex-types";
 
 const workspacePrefixes = ["/dashboard", "/projects/", "/teams/", "/profile", "/settings"];
@@ -159,21 +165,51 @@ export function AppShell({ children }: { children: ReactNode }) {
 
 function Sidebar({ projectId, pathname, onClose, onLogout }: { projectId?: string; pathname: string; onClose: () => void; onLogout: () => void }) {
 	const navigate = useNavigate();
-	const teams = useDemoStore((state) => state.teams);
+	const queryClient = useQueryClient();
+	const { data: serverTeams } = useTeams();
 	const projects = useDemoStore((state) => state.projects);
 	const currentTeamId = useDemoStore((state) => state.currentTeamId);
-	const profile = useDemoStore((state) => state.profile);
-	const setCurrentTeam = useDemoStore((state) => state.setCurrentTeam);
-	const currentTeam = teams.find((team) => team.id === currentTeamId) ?? teams[0];
+	const { data: me } = useMe();
+	const demoProfile = useDemoStore((state) => state.profile);
+	const [selectedTeamId, setSelectedTeamId] = useState("");
+	const profile: DerivedProfile = me?.user
+		? deriveProfile(me.user)
+		: {
+				id: demoProfile.id,
+				name: demoProfile.name,
+				username: demoProfile.username,
+				email: demoProfile.email,
+				initials: demoProfile.initials,
+				gradient: demoProfile.gradient,
+			};
+	const teams = serverTeams ?? me?.teams ?? [];
+	const currentTeam = teams.find((team) => team.id === selectedTeamId)
+		?? teams.find((team) => team.id === currentTeamId)
+		?? teams[0];
 	const teamProjects = projects.filter((project) => project.teamId === currentTeam?.id);
 
 	function switchTeam(teamId: string) {
-		const result = setCurrentTeam(teamId);
-		if (!result.ok) return;
+		setSelectedTeamId(teamId);
 		const firstProject = projects.find((project) => project.teamId === teamId);
 		void navigate(firstProject
 			? { to: "/projects/$projectId", params: { projectId: firstProject.id }, search: {} }
 			: { to: "/dashboard" });
+	}
+
+	async function handleCreateTeam() {
+		const name = window.prompt("Team name")?.trim();
+		if (!name) return;
+		const suggestedSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+		const slug = window.prompt("Team slug", suggestedSlug)?.trim();
+		if (!slug) return;
+		try {
+			const team = await createTeam({ name, slug });
+			queryClient.setQueryData(teamsQueryKey, (current: typeof serverTeams) => [...(current ?? []), team]);
+			setSelectedTeamId(team.id);
+			void navigate({ to: "/teams/$teamId/settings", params: { teamId: team.id } });
+		} catch (error) {
+			window.alert(error instanceof Error ? error.message : "Could not create team.");
+		}
 	}
 
 	return (
@@ -193,6 +229,7 @@ function Sidebar({ projectId, pathname, onClose, onLogout }: { projectId?: strin
 						<DropdownMenuLabel>Switch team</DropdownMenuLabel>
 						{teams.map((team) => <DropdownMenuItem key={team.id} onClick={() => switchTeam(team.id)}>{team.name}</DropdownMenuItem>)}
 						<DropdownMenuSeparator />
+						<DropdownMenuItem onClick={() => void handleCreateTeam()}><Plus /> Create team</DropdownMenuItem>
 						<DropdownMenuItem onClick={() => currentTeam && void navigate({ to: "/teams/$teamId/settings", params: { teamId: currentTeam.id } })}><Settings /> Team settings</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
@@ -217,7 +254,7 @@ function Sidebar({ projectId, pathname, onClose, onLogout }: { projectId?: strin
 				<NavLink to="/profile/mcp" active={pathname === "/profile/mcp"} icon={Workflow}>MCP connection</NavLink>
 				<NavLink to="/profile/settings" active={pathname === "/profile/settings"} icon={Settings}>Settings</NavLink>
 				<Link to="/profile/settings" className="mt-2 flex min-h-12 items-center gap-2 rounded-md border-t border-[var(--line)] px-2 py-3 hover:bg-[var(--bg)]" aria-label="Open profile settings">
-					<Avatar initials={profile.initials} gradient={profile.gradient} name={profile.name} />
+					<Avatar initials={profile.initials} gradient={profile.gradient} name={profile.name} imageUrl={profile.avatarUrl} />
 					<span className="min-w-0"><span className="block truncate text-sm font-semibold">{profile.name}</span><span className="block truncate font-[var(--mono)] text-[10px] text-[var(--ink-soft)]">@{profile.username}</span></span>
 				</Link>
 				<button type="button" onClick={onLogout} className="flex min-h-10 w-full items-center gap-2.5 rounded-md border-l-2 border-l-transparent px-2.5 text-sm font-medium text-[var(--ink-soft)] hover:bg-[var(--block-bg)] hover:text-[var(--block)]"><LogOut className="size-4" aria-hidden="true" />Logout</button>

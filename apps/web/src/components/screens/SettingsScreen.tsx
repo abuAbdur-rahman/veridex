@@ -3,7 +3,7 @@ import { useTheme } from "next-themes";
 import { useState } from "react";
 import { FormField } from "@/components/app/FormField";
 import { PageHeader } from "@/components/app/PageHeader";
-import { useDemoStore } from "@/lib/demo-store";
+import { useDemoStore } from "@/stores/demo-store";
 import type { UserSettings } from "@/lib/veridex-types";
 
 const themes: Array<{ value: UserSettings["theme"]; label: string; icon: typeof Sun }> = [
