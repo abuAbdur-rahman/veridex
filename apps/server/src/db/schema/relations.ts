@@ -2,7 +2,7 @@ import { relations } from "drizzle-orm";
 import { team, teamMember } from "./team.js";
 import { invites } from "./invites.js";
 import { project, projectMember } from "./project.js";
-import { issues, issueStatusHistory } from "./issues.js";
+import { issueAssignments, issues, issueStatusHistory } from "./issues.js";
 import { comments } from "./comments.js";
 import { testCases } from "./test-cases.js";
 import { tags, issueTags } from "./tags.js";
@@ -63,7 +63,18 @@ export const issuesRelations = relations(issues, ({ one, many }) => ({
 	statusHistory: many(issueStatusHistory),
 	comments: many(comments),
 	issueTags: many(issueTags),
+	assignments: many(issueAssignments),
 }));
+
+export const issueAssignmentsRelations = relations(
+	issueAssignments,
+	({ one }) => ({
+		issue: one(issues, {
+			fields: [issueAssignments.issueId],
+			references: [issues.id],
+		}),
+	}),
+);
 
 export const issueStatusHistoryRelations = relations(
 	issueStatusHistory,

@@ -92,6 +92,13 @@ export function createProject(
 export function getProject(projectId: string) {
 	return apiRequest(`/api/projects/${encodeURIComponent(projectId)}`, isServerProject);
 }
+export function deleteProject(projectId: string) {
+	return apiRequest(
+		`/api/projects/${encodeURIComponent(projectId)}`,
+		(value): value is null => value === null,
+		{ method: "DELETE" },
+	);
+}
 export function listProjectMembers(projectId: string) {
 	return apiRequest(
 		`/api/projects/${encodeURIComponent(projectId)}/members`,

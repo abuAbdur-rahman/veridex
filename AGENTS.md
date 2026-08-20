@@ -93,11 +93,11 @@ Follow `.agents/veridex-backend-spec.md` and `.agents/veridex-db-schema.md` for 
 
 The web app currently consumes the server session, onboarding, team, and invite slices:
 
-- **Auth/session:** Better Auth social sign-in/sign-out, `GET /api/me`, `GET /api/users/check-username`, `POST /api/onboarding/complete`.
+- **Auth/session:** Better Auth social sign-in/sign-out, local-only `POST /api/dev/test-session` for authenticated E2E when `DEV_AUTH_ENABLED=true`, `NODE_ENV=development`, and `HOST` is loopback, plus `GET /api/me`, `GET /api/users/check-username`, and `POST /api/onboarding/complete`.
 - **Teams:** `GET /api/teams` (sidebar), `POST /api/teams` (create), `GET /api/teams/:teamId/members` (settings).
 - **Invites:** `POST /api/teams/:teamId/invites` (create invite), `GET /api/invites/:token/validate` (public), `POST /api/invites/:token/accept` (authenticated).
 
-Project, issue, import, WebSocket, API-token, and MCP screens remain fixture-backed until their server contracts are implemented and wired.
+Project, issue, import, WebSocket, API-token, and MCP screens remain fixture-backed until their server contracts are implemented and wired. The local test-user session endpoint is development-only and must never be enabled outside loopback development.
 
 Do not infer endpoint availability from frontend screens. Confirm implemented server scope in `.agents/states/server.md` before replacing fixture behavior.
 

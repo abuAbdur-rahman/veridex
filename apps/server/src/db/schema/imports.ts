@@ -20,6 +20,7 @@ export const importJobs = pgTable("import_jobs", {
 	failedRows: integer("failed_rows").notNull().default(0),
 	columnMapping: jsonb("column_mapping"), // { "Bug Title": "title" }
 	colorMapping: jsonb("color_mapping"), // .xlsx only
+	parsedRows: jsonb("parsed_rows"), // ParsedRow[] for insert worker
 	errorLog: jsonb("error_log"), // [{ row, error }]
 	projectId: uuid("project_id")
 		.notNull()

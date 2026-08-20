@@ -183,7 +183,11 @@ export function ProjectHomeScreen({ projectId, view, query, issueId }: ProjectHo
 				/>
 			) : (
 				<BoardScreen
-					issues={issues.filter((issue) => !issue.assignee || issue.assignee.id === user?.id)}
+					issues={issues.filter(
+					(issue) =>
+						issue.developerAssignees.length === 0 ||
+						issue.developerAssignees.some((assignee) => assignee.id === user?.id),
+				)}
 					onOpenIssue={openIssue}
 					onMoveIssue={(issue, status) => void moveIssue(issue, status)}
 				/>

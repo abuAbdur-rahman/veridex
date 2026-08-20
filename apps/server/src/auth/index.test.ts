@@ -17,6 +17,7 @@ const environment: Environment = {
 		"postgresql://veridex:veridex@localhost:5432/veridex_dev",
 	BETTER_AUTH_SECRET: "test-secret-that-is-long-enough",
 	BETTER_AUTH_URL: "http://localhost:3001",
+	DEV_AUTH_ENABLED: false,
 	R2_BUCKET_NAME: "veridex-uploads",
 	TRUST_PROXY: false,
 };
@@ -24,6 +25,19 @@ const environment: Environment = {
 const db = {} as Database;
 
 describe("createAuth", () => {
+	it.each([
+		[false, false],
+		[true, true],
+	] as const)("sets email/password auth to %s when development auth is %s", (enabled, expected) => {
+		const options = createAuth(db, {
+			...environment,
+			NODE_ENV: enabled ? "development" : "test",
+			DEV_AUTH_ENABLED: enabled,
+		}) as unknown as { emailAndPassword: { enabled: boolean } };
+
+		expect(options.emailAndPassword.enabled).toBe(expected);
+	});
+
 	it("omits disabled social providers and trusts only the web origin", () => {
 		const options = createAuth(db, environment) as unknown as {
 			trustedOrigins: string[];

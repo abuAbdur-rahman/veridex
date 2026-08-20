@@ -74,7 +74,7 @@ beforeEach(() => {
 	requireSession.mockResolvedValue({ user: { id: "user-1" } });
 	requireProjectRole.mockResolvedValue({
 		session: { user: { id: "user-1" } },
-		membership: { projectRole: "admin" },
+		membership: { role: "admin" },
 	});
 });
 
@@ -307,18 +307,27 @@ describe("issue routes", () => {
 			"in_progress",
 			"web",
 			"Starting work",
+			"admin",
 		);
 	});
 
 	const assigneeId = "44444444-4444-4444-8444-444444444444";
+	const qaAssigneeId = "55555555-5555-4555-8555-555555555555";
 
 	it("requires qa or admin role to assign", async () => {
-		assignIssue.mockResolvedValue({ id: issueId, assigneeId });
+		assignIssue.mockResolvedValue({
+			id: issueId,
+			developerAssigneeIds: [assigneeId],
+			qaAssigneeIds: [qaAssigneeId],
+		});
 
 		const response = await (await createApp()).inject({
 			method: "PATCH",
 			url: `/api/projects/${projectId}/issues/${issueId}/assign`,
-			payload: { assigneeId },
+			payload: {
+				developerAssigneeIds: [assigneeId],
+				qaAssigneeIds: [qaAssigneeId],
+			},
 		});
 
 		expect(response.statusCode).toBe(200);
@@ -332,8 +341,8 @@ describe("issue routes", () => {
 			projectId,
 			issueId,
 			"user-1",
-			assigneeId,
-			null,
+			[assigneeId],
+			[qaAssigneeId],
 			"web",
 		);
 	});

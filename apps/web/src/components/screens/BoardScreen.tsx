@@ -23,6 +23,10 @@ const COLUMNS: { title: string; status: IssueStatus; accent?: boolean }[] = [
 	{ title: "Verified", status: "verified" },
 ];
 
+function belongsToColumn(issue: Issue, status: IssueStatus) {
+	return issue.status === status;
+}
+
 interface BoardScreenProps {
 	issues: Issue[];
 	onOpenIssue?: (issue: Issue) => void;
@@ -69,8 +73,8 @@ export function BoardScreen({ issues, onOpenIssue, onMoveIssue }: BoardScreenPro
 						status={column.status}
 						title={column.title}
 						accent={column.accent}
-						count={issues.filter((issue) => issue.status === column.status).length}
-						issues={issues.filter((issue) => issue.status === column.status)}
+						count={issues.filter((issue) => belongsToColumn(issue, column.status)).length}
+						issues={issues.filter((issue) => belongsToColumn(issue, column.status))}
 						onOpenIssue={onOpenIssue}
 						onMoveIssue={onMoveIssue}
 						dropDisabled={Boolean(
@@ -98,9 +102,11 @@ export function BoardScreen({ issues, onOpenIssue, onMoveIssue }: BoardScreenPro
 export function filterBoard(issues: Issue[], mode: "all" | "mine" | "unassigned") {
 	switch (mode) {
 		case "mine":
-			return issues.filter((issue) => issue.assignee?.name === "Marcus Lee");
+			return issues.filter((issue) =>
+				issue.developerAssignees.some((assignee) => assignee.name === "Marcus Lee"),
+			);
 		case "unassigned":
-			return issues.filter((issue) => !issue.assignee);
+			return issues.filter((issue) => issue.developerAssignees.length === 0);
 		default:
 			return issues;
 	}

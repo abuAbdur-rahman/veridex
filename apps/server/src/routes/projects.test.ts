@@ -15,6 +15,8 @@ const {
 	addProjectMember,
 	updateProjectMemberRole,
 	removeProjectMember,
+	updateProjectName,
+	deleteProject,
 } = vi.hoisted(() => ({
 	requireSession: vi.fn(),
 	requireTeamRole: vi.fn(),
@@ -26,6 +28,8 @@ const {
 	addProjectMember: vi.fn(),
 	updateProjectMemberRole: vi.fn(),
 	removeProjectMember: vi.fn(),
+	updateProjectName: vi.fn(),
+	deleteProject: vi.fn(),
 }));
 
 vi.mock("../lib/auth.js", () => ({
@@ -41,6 +45,8 @@ vi.mock("../services/project.service.js", () => ({
 	addProjectMember,
 	updateProjectMemberRole,
 	removeProjectMember,
+	updateProjectName,
+	deleteProject,
 }));
 
 const apps: Array<ReturnType<typeof Fastify>> = [];
@@ -334,6 +340,60 @@ describe("project routes", () => {
 			projectId,
 			memberId,
 		);
+	});
+
+	it("updates only project name for admins", async () => {
+		updateProjectName.mockResolvedValue({ id: projectId, name: "Renamed" });
+
+		const response = await (await createApp()).inject({
+			method: "PATCH",
+			url: `/api/projects/${projectId}`,
+			payload: { name: "  Renamed  " },
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.json()).toEqual({ id: projectId, name: "Renamed" });
+		expect(updateProjectName).toHaveBeenCalledWith(expect.anything(), projectId, "Renamed");
+	});
+
+	it("rejects non-name project updates at the route boundary", async () => {
+		const response = await (await createApp()).inject({
+			method: "PATCH",
+			url: `/api/projects/${projectId}`,
+			payload: { name: "Renamed", slug: "renamed" },
+		});
+
+		expect(response.statusCode).toBe(422);
+		expect(updateProjectName).not.toHaveBeenCalled();
+	});
+
+	it("deletes a project with 204 for admins", async () => {
+		deleteProject.mockResolvedValue(undefined);
+
+		const response = await (await createApp()).inject({
+			method: "DELETE",
+			url: `/api/projects/${projectId}`,
+		});
+
+		expect(response.statusCode).toBe(204);
+		expect(deleteProject).toHaveBeenCalledWith(expect.anything(), projectId);
+	});
+
+	it("requires admin access to update or delete a project", async () => {
+		requireProjectRole.mockRejectedValue(new ForbiddenError());
+
+		for (const method of ["PATCH", "DELETE"] as const) {
+			const response = await (await createApp()).inject({
+				method,
+				url: `/api/projects/${projectId}`,
+				...(method === "PATCH" ? { payload: { name: "Renamed" } } : {}),
+			});
+
+			expect(response.statusCode).toBe(403);
+		}
+		expect(requireProjectRole).toHaveBeenCalledWith(expect.anything(), projectId, ["admin"]);
+		expect(updateProjectName).not.toHaveBeenCalled();
+		expect(deleteProject).not.toHaveBeenCalled();
 	});
 
 	it("preserves typed service errors in the shared envelope", async () => {

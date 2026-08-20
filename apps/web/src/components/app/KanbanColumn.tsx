@@ -35,7 +35,7 @@ export function KanbanColumn({
 		<section
 			ref={setNodeRef}
 			aria-label={`${title} column`}
-			className={`flex w-[320px] shrink-0 flex-col gap-3 rounded-[10px] border bg-[var(--bg-alt)] p-3 transition-colors ${isOver ? "border-[var(--accent)] bg-[var(--accent-bg)]" : dropDisabled ? "border-[var(--line)] opacity-45" : "border-[var(--line)]"}`}
+			className={`flex w-[400px] shrink-0 flex-col gap-3 rounded-[10px] border bg-[var(--bg-alt)] p-3 transition-colors ${isOver ? "border-[var(--accent)] bg-[var(--accent-bg)]" : dropDisabled ? "border-[var(--line)] opacity-45" : "border-[var(--line)]"}`}
 		>
 			<header className="flex items-center justify-between px-1">
 				<h3 className="font-[var(--mono)] text-xs font-semibold uppercase tracking-[0.02em] text-[var(--ink-soft)]">

@@ -5,12 +5,20 @@ import { PageHeader } from "@/components/app/PageHeader";
 import { ProjectCard } from "@/components/app/ProjectCard";
 import { EmptyState } from "@/components/app/EmptyState";
 import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import {
 	CreateProjectModal,
 	type CreateProjectValues,
 } from "@/components/screens/CreateProjectModal";
 import { useWorkspaceTeam } from "@/components/app/workspace-team";
 import { useMe } from "@/queries/session";
-import { useCreateProject, useProjects } from "@/queries/projects";
+import { useCreateProject, useDeleteProject, useProjects } from "@/queries/projects";
+import type { ServerProject } from "@/api/projects";
 
 export function DashboardScreen() {
 	const navigate = useNavigate();
@@ -20,8 +28,11 @@ export function DashboardScreen() {
 	const teamId = team?.id ?? "";
 	const projectsQuery = useProjects(teamId);
 	const createProject = useCreateProject(teamId);
+	const deleteProject = useDeleteProject(teamId);
 	const [error, setError] = useState("");
 	const [createOpen, setCreateOpen] = useState(false);
+	const [deleteTarget, setDeleteTarget] = useState<ServerProject | null>(null);
+	const [deleteError, setDeleteError] = useState("");
 	const projects = projectsQuery.data ?? [];
 	const canCreate = team?.teamRole === "owner" || team?.teamRole === "admin";
 
@@ -34,6 +45,17 @@ export function DashboardScreen() {
 			await navigate({ to: "/projects/$projectId", params: { projectId: project.id }, search: {} });
 		} catch (value) {
 			setError(value instanceof Error ? value.message : "Could not create project.");
+		}
+	}
+
+	async function handleDelete() {
+		if (!deleteTarget) return;
+		setDeleteError("");
+		try {
+			await deleteProject.mutateAsync(deleteTarget.id);
+			setDeleteTarget(null);
+		} catch (value) {
+			setDeleteError(value instanceof Error ? value.message : "Could not delete project.");
 		}
 	}
 
@@ -76,10 +98,56 @@ export function DashboardScreen() {
 			) : (
 				<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 					{projects.map((project) => (
-						<ProjectCard key={project.id} project={project} />
+						<ProjectCard
+							key={project.id}
+							project={project}
+							onDelete={(target) => {
+								setDeleteError("");
+								setDeleteTarget(target);
+							}}
+						/>
 					))}
 				</div>
 			)}
+			<Dialog
+				open={deleteTarget !== null}
+				onOpenChange={(open) => {
+					if (!open && !deleteProject.isPending) setDeleteTarget(null);
+				}}
+			>
+				<DialogContent showCloseButton={!deleteProject.isPending}>
+					<DialogHeader>
+						<DialogTitle>Delete {deleteTarget?.name}?</DialogTitle>
+						<DialogDescription>
+							This permanently deletes the project and its issues, members, imports, tags, and
+							test cases.
+						</DialogDescription>
+					</DialogHeader>
+					{deleteError ? (
+						<p role="alert" className="text-sm text-[var(--block)]">
+							{deleteError}
+						</p>
+					) : null}
+					<div className="flex justify-end gap-2">
+						<button
+							type="button"
+							disabled={deleteProject.isPending}
+							onClick={() => setDeleteTarget(null)}
+							className="inline-flex min-h-10 min-w-[92px] items-center justify-center rounded-md border border-[var(--line)] px-4 text-sm font-semibold hover:bg-[var(--bg)] disabled:opacity-50"
+						>
+							Cancel
+						</button>
+						<button
+							type="button"
+							disabled={deleteProject.isPending}
+							onClick={handleDelete}
+							className="inline-flex min-h-10 min-w-[92px] items-center justify-center rounded-md bg-[var(--block)] px-4 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+						>
+							{deleteProject.isPending ? "Deleting..." : "Continue"}
+						</button>
+					</div>
+				</DialogContent>
+			</Dialog>
 			<CreateProjectModal
 				open={createOpen}
 				pending={createProject.isPending}

@@ -4,12 +4,14 @@ import { PageHeader } from "@/components/app/PageHeader";
 
 interface ImportUploadProps {
 	onFile?: (file: File) => void;
+	error?: string;
 }
 
-export function ImportUpload({ onFile }: ImportUploadProps) {
+export function ImportUpload({ onFile, error }: ImportUploadProps) {
 	const inputRef = useRef<HTMLInputElement>(null);
 	const [dragging, setDragging] = useState(false);
-	const [error, setError] = useState<string>();
+	const [fileError, setFileError] = useState<string>();
+	const displayError = error ?? fileError;
 
 	function handleFiles(files: FileList | null) {
 		const file = files?.[0];
@@ -17,11 +19,11 @@ export function ImportUpload({ onFile }: ImportUploadProps) {
 
 		const extension = file.name.toLowerCase().match(/\.[^.]+$/)?.[0];
 		if (extension !== ".csv" && extension !== ".xlsx") {
-			setError("Choose a .csv or .xlsx file.");
+			setFileError("Choose a .csv or .xlsx file.");
 			return;
 		}
 
-		setError(undefined);
+		setFileError(undefined);
 		onFile?.(file);
 	}
 
@@ -29,7 +31,9 @@ export function ImportUpload({ onFile }: ImportUploadProps) {
 		<div>
 			<PageHeader title="Import Issues" />
 			<div
-				aria-describedby={error ? "import-file-error import-file-help" : "import-file-help"}
+				aria-describedby={
+					displayError ? "import-file-error import-file-help" : "import-file-help"
+				}
 				onDragOver={(e) => {
 					e.preventDefault();
 					setDragging(true);
@@ -72,13 +76,13 @@ export function ImportUpload({ onFile }: ImportUploadProps) {
 					}}
 				/>
 			</div>
-			{error ? (
+			{displayError ? (
 				<p
 					id="import-file-error"
 					role="alert"
 					className="mt-3 text-center text-sm font-medium text-[var(--block)]"
 				>
-					{error}
+					{displayError}
 				</p>
 			) : null}
 			<p id="import-file-help" className="mt-4 text-center text-xs text-[var(--ink-soft)]">

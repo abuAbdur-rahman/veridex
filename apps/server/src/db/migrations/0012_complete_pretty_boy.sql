@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "issues_project_title_lower_unique" ON "issues" USING btree ("project_id",lower("title"));
