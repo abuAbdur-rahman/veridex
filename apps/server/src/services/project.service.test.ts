@@ -8,6 +8,8 @@ import {
 	listProjectMembers,
 	listProjects,
 	removeProjectMember,
+	deleteProject,
+	updateProjectName,
 	updateProjectMemberRole,
 } from "./project.service.js";
 
@@ -98,6 +100,7 @@ function createProjectMemberDatabase(options: {
 	existingMembers?: Array<Record<string, unknown>>;
 	updateReturns?: Array<Record<string, unknown>>;
 	deleteReturns?: Array<Record<string, unknown>>;
+	updateProjectReturns?: Array<Record<string, unknown>>;
 } = {}) {
 	const projectRef = options.projectRef ?? [
 		{ teamId: "team-1", createdBy: "creator-1" },
@@ -106,6 +109,7 @@ function createProjectMemberDatabase(options: {
 	const existingMembers = options.existingMembers ?? [];
 	const updateReturns = options.updateReturns ?? [{ userId: "user-2" }];
 	const deleteReturns = options.deleteReturns ?? [{ userId: "user-2" }];
+	const updateProjectReturns = options.updateProjectReturns ?? [{ id: "project-1", name: "Renamed" }];
 	const addedAt = new Date("2026-08-01T00:00:00.000Z");
 	return {
 		select: vi.fn(() => ({
@@ -140,9 +144,11 @@ function createProjectMemberDatabase(options: {
 			})),
 		})),
 		update: vi.fn(() => ({
-			set: vi.fn(() => ({
+			set: vi.fn((values: Record<string, unknown>) => ({
 				where: vi.fn(() => ({
-					returning: vi.fn(async () => updateReturns),
+					returning: vi.fn(async () =>
+						"name" in values ? updateProjectReturns : updateReturns,
+					),
 				})),
 			})),
 		})),
@@ -388,6 +394,39 @@ describe("project service", () => {
 		).rejects.toMatchObject({
 			code: "CREATOR_PROTECTED",
 			statusCode: 409,
+		});
+	});
+
+	it("updates a project's name", async () => {
+		const db = createProjectMemberDatabase();
+
+		await expect(updateProjectName(db, "project-1", "Renamed")).resolves.toEqual({
+			id: "project-1",
+			name: "Renamed",
+		});
+	});
+
+	it("rejects updating a missing project", async () => {
+		const db = createProjectMemberDatabase({ projectRef: [] });
+
+		await expect(updateProjectName(db, "project-1", "Renamed")).rejects.toMatchObject({
+			code: "NOT_FOUND",
+			statusCode: 404,
+		});
+	});
+
+	it("permanently deletes a project", async () => {
+		const db = createProjectMemberDatabase({ deleteReturns: [{ id: "project-1" }] });
+
+		await expect(deleteProject(db, "project-1")).resolves.toBeUndefined();
+	});
+
+	it("rejects deleting a missing project", async () => {
+		const db = createProjectMemberDatabase({ projectRef: [] });
+
+		await expect(deleteProject(db, "project-1")).rejects.toMatchObject({
+			code: "NOT_FOUND",
+			statusCode: 404,
 		});
 	});
 });

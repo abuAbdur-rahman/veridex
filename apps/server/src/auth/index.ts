@@ -34,6 +34,9 @@ export function createAuth(db: Database, environment: Environment) {
 		advanced: {
 			useSecureCookies: environment.NODE_ENV === "production",
 		},
+		emailAndPassword: {
+			enabled: environment.DEV_AUTH_ENABLED,
+		},
 		user: {
 			additionalFields: {
 				username: { type: "string", required: false },

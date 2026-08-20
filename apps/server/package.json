@@ -24,12 +24,16 @@
 		"better-auth": "^1.6.27",
 		"dotenv": "^17.4.2",
 		"drizzle-orm": "^0.45.2",
+		"exceljs": "^4.4.0",
 		"fastify": "^5.6.1",
+		"papaparse": "^5.6.0",
+		"pg-boss": "^12.27.0",
 		"postgres": "^3.4.9",
 		"zod": "^4.1.12"
 	},
 	"devDependencies": {
 		"@types/node": "^24.13.3",
+		"@types/papaparse": "^5.5.2",
 		"@vitest/coverage-v8": "^3.2.4",
 		"drizzle-kit": "^0.31.10",
 		"tsx": "^4.20.6",

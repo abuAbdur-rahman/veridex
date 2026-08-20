@@ -2,6 +2,7 @@ import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/r
 import {
 	addProjectMember,
 	createProject,
+	deleteProject,
 	getProject,
 	listProjectMembers,
 	listProjects,
@@ -50,6 +51,17 @@ export function useCreateProject(teamId: string) {
 		mutationFn: (input: { name: string; slug: string; description?: string }) =>
 			createProject(teamId, input),
 		onSuccess: () => qc.invalidateQueries({ queryKey: projectsQueryKey(teamId) }),
+	});
+}
+export function useDeleteProject(teamId: string) {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (projectId: string) => deleteProject(projectId),
+		onSuccess: (_data, projectId) => {
+			qc.removeQueries({ queryKey: projectQueryKey(projectId) });
+			qc.removeQueries({ queryKey: projectMembersQueryKey(projectId) });
+			return qc.invalidateQueries({ queryKey: projectsQueryKey(teamId) });
+		},
 	});
 }
 export function useAddProjectMember(projectId: string) {

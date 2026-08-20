@@ -415,6 +415,9 @@ DATABASE_URL_UNPOOLED=postgresql://veridex:veridex@localhost:5432/veridex_dev
 BETTER_AUTH_SECRET=any-long-local-secret
 BETTER_AUTH_URL=http://localhost:3001
 
+# Optional authenticated local E2E session. Keep the server loopback-bound.
+DEV_AUTH_ENABLED=false
+
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GITHUB_CLIENT_ID=
@@ -427,8 +430,16 @@ R2_BUCKET_NAME=veridex-uploads
 R2_ENDPOINT=https://<account_id>.r2.cloudflarestorage.com
 
 PORT=3001
+HOST=127.0.0.1
 NODE_ENV=development
 ```
+
+When `DEV_AUTH_ENABLED=true`, `NODE_ENV=development`, and `HOST` is
+`127.0.0.1`, `localhost`, or `::1`, `POST /api/dev/test-session` creates or
+signs in the fixed `dev-user@localhost.test` identity, completes onboarding,
+and forwards the normal Better Auth session cookies. The route is not
+registered unless all three guards pass. Keep this endpoint loopback-only; it
+is a local E2E aid, not an authentication bypass for shared environments.
 
 ---
 

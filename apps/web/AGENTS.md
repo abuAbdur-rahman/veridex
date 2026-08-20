@@ -56,10 +56,10 @@ pnpm build
 
 Implemented client integrations:
 
-- **Auth/session:** Social sign-in/sign-out, `GET /api/me`, `GET /api/users/check-username`, `POST /api/onboarding/complete`.
+- **Auth/session:** Social sign-in/sign-out, local development test-user login through `POST /api/dev/test-session` on loopback development servers, `GET /api/me`, `GET /api/users/check-username`, and `POST /api/onboarding/complete`.
 - **Teams:** `GET /api/teams`, `POST /api/teams`, `GET /api/teams/:teamId/members`.
 - **Invites:** `POST /api/teams/:teamId/invites`, `GET /api/invites/:token/validate`, `POST /api/invites/:token/accept`.
 
-Project, issue, import, WebSocket, API-token, and MCP flows remain fixture-backed. Team settings and sidebar use server-backed teams; invite accept route uses real validation/acceptance; login preserves invite redirect via search param.
+Project, issue, import, WebSocket, API-token, and MCP flows remain fixture-backed. Team settings and sidebar use server-backed teams; invite accept route uses real validation/acceptance; login preserves invite redirect via search param. The local test-user button is hostname-gated in the browser, while the server's development flag and loopback guard remain authoritative.
 
 Check `.agents/states/server.md` before wiring a screen. A rendered frontend route does not imply a matching backend endpoint exists.

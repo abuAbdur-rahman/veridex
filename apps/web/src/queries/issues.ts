@@ -100,7 +100,7 @@ export function useUpdateIssueStatus(projectId: string) {
 export function useAssignIssue(projectId: string, issueId: string) {
 	const refresh = useRefresh(projectId);
 	return useMutation({
-		mutationFn: (input: { assigneeId?: string | null; qaAssigneeId?: string | null }) =>
+		mutationFn: (input: { developerAssigneeIds: string[]; qaAssigneeIds: string[] }) =>
 			assignIssue(projectId, issueId, input),
 		onSuccess: () => refresh(issueId),
 	});

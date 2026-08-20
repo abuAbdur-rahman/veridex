@@ -10,7 +10,13 @@ import {
 	updateIssue,
 	updateStatus,
 } from "./issue.service.js";
-import { issues, project, projectMember, issueStatusHistory } from "../db/schema/index.js";
+import {
+	issues,
+	project,
+	projectMember,
+	issueStatusHistory,
+	issueAssignments,
+} from "../db/schema/index.js";
 
 const mockDb = {
 	transaction: vi.fn(),
@@ -44,6 +50,13 @@ describe("issue.service", () => {
 			mockDb.select = memberSelectMock();
 
 			const mockTx = {
+				select: vi.fn(() => ({
+					from: vi.fn(() => ({
+						where: vi.fn(() => ({
+							limit: vi.fn(async () => []),
+						})),
+					})),
+				})),
 				update: vi.fn(() => ({
 					set: vi.fn(() => ({
 						where: vi.fn(() => ({
@@ -62,6 +75,7 @@ describe("issue.service", () => {
 						),
 					})),
 				})),
+				delete: vi.fn(() => ({ where: vi.fn(() => Promise.resolve()) })),
 			};
 
 			mockDb.transaction = vi.fn(async (fn) => fn(mockTx));
@@ -81,6 +95,13 @@ describe("issue.service", () => {
 
 			let callCount = 0;
 			const mockTx = {
+				select: vi.fn(() => ({
+					from: vi.fn(() => ({
+						where: vi.fn(() => ({
+							limit: vi.fn(async () => []),
+						})),
+					})),
+				})),
 				update: vi.fn(() => ({
 					set: vi.fn(() => ({
 						where: vi.fn(() => ({
@@ -103,6 +124,7 @@ describe("issue.service", () => {
 						),
 					})),
 				})),
+				delete: vi.fn(() => ({ where: vi.fn(() => Promise.resolve()) })),
 			};
 
 			mockDb.transaction = vi.fn(async (fn) => fn(mockTx));
@@ -112,6 +134,57 @@ describe("issue.service", () => {
 					title: "Test Issue",
 				}),
 			).rejects.toMatchObject({ code: "TICKET_REF_CONFLICT" });
+		});
+
+		it("assigns backlog issues to the sole project member", async () => {
+			mockDb.select = memberSelectMock();
+			const insertedValues: unknown[] = [];
+			const mockTx = {
+				select: vi.fn(() => ({
+					from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn(async () => []) })) })),
+				})),
+				update: vi.fn(() => ({
+					set: vi.fn(() => ({
+						where: vi.fn(() => ({
+							returning: vi.fn(async () => [{ nextTicketNumber: 1, slug: "solo" }]),
+						})),
+					})),
+				})),
+				insert: vi.fn((table) => ({
+					values: vi.fn((values) => {
+						insertedValues.push({ table, values });
+						return { returning: vi.fn(async () => [{ id: "issue-1", ticketRef: "SOL-001" }]) };
+					}),
+				})),
+				delete: vi.fn(() => ({ where: vi.fn(async () => {}) })),
+			};
+			mockDb.transaction = vi.fn(async (fn) => fn(mockTx));
+
+			const result = await createIssue(mockDb, "project-1", "user-1", { title: "Solo issue" });
+
+			expect(result.developerAssigneeIds).toEqual(["user-1"]);
+			expect(insertedValues).toContainEqual({
+				table: issueAssignments,
+				values: [{ issueId: "issue-1", userId: "user-1", role: "dev" }],
+			});
+		});
+	});
+
+	describe("getIssueStatusHistory", () => {
+		it("rejects an issue outside the supplied project", async () => {
+			const limit = vi.fn()
+				.mockResolvedValueOnce([{ userId: "user-1" }])
+				.mockResolvedValueOnce([]);
+			mockDb.select = vi.fn(() => ({
+				from: vi.fn(() => ({ where: vi.fn(() => ({ limit })) })),
+			})) as unknown as typeof mockDb.select;
+
+			await expect(getIssueStatusHistory(
+				mockDb,
+				"project-1",
+				"other-project-issue",
+				"user-1",
+			)).rejects.toMatchObject({ code: "NOT_FOUND" });
 		});
 	});
 
@@ -132,6 +205,7 @@ describe("issue.service", () => {
 				insert: vi.fn(() => ({
 					values: vi.fn(() => Promise.resolve()),
 				})),
+				delete: vi.fn(() => ({ where: vi.fn(() => Promise.resolve()) })),
 			};
 
 			mockDb.transaction = vi.fn(async (fn) => fn(mockTx));
@@ -194,6 +268,7 @@ describe("issue.service", () => {
 				insert: vi.fn(() => ({
 					values: vi.fn(() => Promise.resolve()),
 				})),
+				delete: vi.fn(() => ({ where: vi.fn(() => Promise.resolve()) })),
 			};
 
 			mockDb.transaction = vi.fn(async (fn) => fn(mockTx));
@@ -231,6 +306,7 @@ describe("issue.service", () => {
 				insert: vi.fn(() => ({
 					values: vi.fn(() => Promise.resolve()),
 				})),
+				delete: vi.fn(() => ({ where: vi.fn(() => Promise.resolve()) })),
 			};
 
 			mockDb.transaction = vi.fn(async (fn) => fn(mockTx));
@@ -249,6 +325,116 @@ describe("issue.service", () => {
 			expect(mockTx.insert.mock.results[0].value.values).toHaveBeenCalledWith(
 				expect.objectContaining({ source: "mcp" }),
 			);
+		});
+
+		it("allows dev rejection to persist as rejected", async () => {
+			mockDb.select = createSelectMock([{ status: "in_qa" }]);
+
+			const mockTx = {
+				update: vi.fn(() => ({
+					set: vi.fn(() => ({
+						where: vi.fn(() => ({
+							returning: vi.fn(() =>
+								Promise.resolve([{ id: "issue-1", status: "rejected" }]),
+							),
+						})),
+					})),
+				})),
+				insert: vi.fn(() => ({
+					values: vi.fn(() => Promise.resolve()),
+				})),
+				delete: vi.fn(() => ({ where: vi.fn(() => Promise.resolve()) })),
+			};
+
+			mockDb.transaction = vi.fn(async (fn) => fn(mockTx));
+
+			const result = await updateStatus(
+				mockDb,
+				"project-1",
+				"issue-1",
+				"user-1",
+				"rejected",
+				"web",
+				undefined,
+				"dev",
+			);
+
+			expect(result.status).toBe("rejected");
+			expect(mockTx.insert.mock.results[0].value.values).toHaveBeenCalledWith(
+				expect.objectContaining({ toStatus: "rejected" }),
+			);
+		});
+
+		it("converts QA rejection to backlog", async () => {
+			mockDb.select = createSelectMock([{ status: "in_qa" }]);
+
+			const mockTx = {
+				update: vi.fn(() => ({
+					set: vi.fn(() => ({
+						where: vi.fn(() => ({
+							returning: vi.fn(() =>
+								Promise.resolve([{ id: "issue-1", status: "backlog" }]),
+							),
+						})),
+					})),
+				})),
+				insert: vi.fn(() => ({
+					values: vi.fn(() => Promise.resolve()),
+				})),
+				delete: vi.fn(() => ({ where: vi.fn(() => Promise.resolve()) })),
+			};
+
+			mockDb.transaction = vi.fn(async (fn) => fn(mockTx));
+
+			const result = await updateStatus(
+				mockDb,
+				"project-1",
+				"issue-1",
+				"user-1",
+				"rejected",
+				"web",
+				"Found critical regression",
+				"qa",
+			);
+
+			expect(result.status).toBe("backlog");
+			expect(mockTx.insert.mock.results[0].value.values).toHaveBeenCalledWith(
+				expect.objectContaining({ toStatus: "backlog" }),
+			);
+		});
+
+		it("allows reopening from rejected to backlog", async () => {
+			mockDb.select = createSelectMock([{ status: "rejected" }]);
+
+			const mockTx = {
+				update: vi.fn(() => ({
+					set: vi.fn(() => ({
+						where: vi.fn(() => ({
+							returning: vi.fn(() =>
+								Promise.resolve([{ id: "issue-1", status: "backlog" }]),
+							),
+						})),
+					})),
+				})),
+				insert: vi.fn(() => ({
+					values: vi.fn(() => Promise.resolve()),
+				})),
+				delete: vi.fn(() => ({ where: vi.fn(() => Promise.resolve()) })),
+			};
+
+			mockDb.transaction = vi.fn(async (fn) => fn(mockTx));
+
+			const result = await updateStatus(
+				mockDb,
+				"project-1",
+				"issue-1",
+				"user-1",
+				"backlog",
+				"web",
+				"Reopening for retry",
+			);
+
+			expect(result.status).toBe("backlog");
 		});
 	});
 
@@ -270,8 +456,8 @@ describe("issue.service", () => {
 					"project-1",
 					"issue-1",
 					"user-1",
-					"non-member",
-					null,
+					["non-member"],
+					[],
 					"web",
 				),
 			).rejects.toMatchObject({ code: "NOT_PROJECT_MEMBER" });
@@ -289,18 +475,27 @@ describe("issue.service", () => {
 					})),
 				})),
 			})) as unknown as typeof mockDb.update;
+			mockDb.transaction = vi.fn(async (fn) =>
+				fn({
+					update: mockDb.update,
+					delete: vi.fn(() => ({ where: vi.fn(() => Promise.resolve()) })),
+					insert: vi.fn(() => ({ values: vi.fn(() => Promise.resolve()) })),
+				} as unknown as Parameters<Parameters<Database["transaction"]>[0]>[0]),
+			);
 
 			const result = await assignIssue(
 				mockDb,
 				"project-1",
 				"issue-1",
 				"user-1",
-				null,
-				null,
+				[],
+				[],
 				"web",
 			);
 
 			expect(result.assigneeId).toBeNull();
+			expect(result.developerAssigneeIds).toEqual([]);
+			expect(result.qaAssigneeIds).toEqual([]);
 		});
 	});
 });

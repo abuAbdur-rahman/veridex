@@ -24,6 +24,8 @@ export interface ServerIssue {
 	reporterId: string;
 	assigneeId: string | null;
 	qaAssigneeId: string | null;
+	developerAssigneeIds: string[];
+	qaAssigneeIds: string[];
 	testCaseId: string | null;
 	importJobId: string | null;
 	createdAt: string | null;
@@ -44,6 +46,8 @@ export interface IssueFilters {
 	status?: IssueStatus;
 	assigneeId?: string;
 	qaAssigneeId?: string;
+	developerAssigneeIds?: string[];
+	qaAssigneeIds?: string[];
 	severity?: Severity;
 	search?: string;
 	limit?: number;
@@ -71,13 +75,15 @@ export interface UpdateIssueInput
 	> {
 	assigneeId?: string | null;
 	qaAssigneeId?: string | null;
+	developerAssigneeIds?: string[];
+	qaAssigneeIds?: string[];
 	testCaseId?: string | null;
 	description?: string | null;
 	environment?: IssueEnvironment | null;
 	imageUrl?: string | null;
 }
 
-const statuses = new Set<IssueStatus>(["backlog", "in_progress", "in_qa", "verified"]);
+const statuses = new Set<IssueStatus>(["backlog", "in_progress", "in_qa", "verified", "rejected"]);
 const severities = new Set<Severity>(["low", "medium", "high", "critical"]);
 const nullableString = (v: unknown): v is string | null => v === null || typeof v === "string";
 const isEnvironment = (v: unknown): v is IssueEnvironment | null => {
@@ -107,6 +113,10 @@ export function isServerIssue(v: unknown): v is ServerIssue {
 		typeof v.reporterId === "string" &&
 		nullableString(v.assigneeId) &&
 		nullableString(v.qaAssigneeId) &&
+		Array.isArray(v.developerAssigneeIds) &&
+		v.developerAssigneeIds.every((id): id is string => typeof id === "string") &&
+		Array.isArray(v.qaAssigneeIds) &&
+		v.qaAssigneeIds.every((id): id is string => typeof id === "string") &&
 		nullableString(v.testCaseId) &&
 		nullableString(v.importJobId) &&
 		nullableString(v.createdAt) &&
@@ -186,7 +196,7 @@ export function updateIssueStatus(
 export function assignIssue(
 	projectId: string,
 	issueId: string,
-	input: { assigneeId?: string | null; qaAssigneeId?: string | null },
+	input: { developerAssigneeIds: string[]; qaAssigneeIds: string[] },
 ) {
 	return apiRequest(
 		`/api/projects/${encodeURIComponent(projectId)}/issues/${encodeURIComponent(issueId)}/assign`,

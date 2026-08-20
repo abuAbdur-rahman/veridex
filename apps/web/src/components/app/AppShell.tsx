@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
 	ChevronsUpDown,
+	EllipsisVertical,
 	LayoutDashboard,
 	LayoutGrid,
 	LogOut,
@@ -9,6 +10,7 @@ import {
 	Plus,
 	Search,
 	Settings,
+	Trash2,
 	Upload,
 	Users,
 	Workflow,
@@ -43,7 +45,7 @@ import { deriveProfile, type DerivedProfile } from "@/api/session";
 import { createTeam } from "@/api/teams";
 import { useMe } from "@/queries/session";
 import { teamsQueryKey, useTeams } from "@/queries/teams";
-import { useProject, useProjectMembers, useProjects } from "@/queries/projects";
+import { useDeleteProject, useProject, useProjectMembers, useProjects } from "@/queries/projects";
 import { useDemoStore } from "@/stores/demo-store";
 import { isRoleView, type RoleView } from "@/lib/veridex-types";
 
@@ -279,6 +281,11 @@ function Sidebar({
 	const [teamOpen, setTeamOpen] = useState(false);
 	const [teamError, setTeamError] = useState("");
 	const [teamBusy, setTeamBusy] = useState(false);
+	const [deleteProjectTarget, setDeleteProjectTarget] = useState<{
+		id: string;
+		name: string;
+	} | null>(null);
+	const [deleteProjectError, setDeleteProjectError] = useState("");
 	const demoProfile = useDemoStore((state) => state.profile);
 	const profile: DerivedProfile = me?.user
 		? deriveProfile(me.user)
@@ -296,6 +303,7 @@ function Sidebar({
 		teams.find((team) => team.id === currentTeamId) ??
 		teams[0];
 	const { data: serverProjects } = useProjects(currentTeam?.id ?? "");
+	const deleteProjectMutation = useDeleteProject(currentTeam?.id ?? "");
 	const teamProjects = serverProjects ?? [];
 
 	function switchTeam(teamId: string) {
@@ -318,6 +326,19 @@ function Sidebar({
 		} catch (error) {
 			setTeamError(error instanceof Error ? error.message : "Could not create team.");
 			setTeamBusy(false);
+		}
+	}
+
+	async function handleDeleteProject() {
+		if (!deleteProjectTarget) return;
+		setDeleteProjectError("");
+		try {
+			await deleteProjectMutation.mutateAsync(deleteProjectTarget.id);
+			const deletedProjectId = deleteProjectTarget.id;
+			setDeleteProjectTarget(null);
+			if (projectId === deletedProjectId) void navigate({ to: "/dashboard" });
+		} catch (error) {
+			setDeleteProjectError(error instanceof Error ? error.message : "Could not delete project.");
 		}
 	}
 
@@ -389,6 +410,51 @@ function Sidebar({
 				}}
 				onSubmit={handleCreateTeamSubmit}
 			/>
+			<Dialog
+				open={deleteProjectTarget !== null}
+				onOpenChange={(open) => {
+					if (!deleteProjectMutation.isPending && !open) {
+						setDeleteProjectTarget(null);
+						setDeleteProjectError("");
+					}
+				}}
+			>
+				<DialogContent className="max-w-[420px] gap-0 overflow-hidden border border-[var(--line)] bg-[var(--surface)] p-0 text-[var(--ink)] sm:max-w-[420px]">
+					<DialogHeader className="border-b border-[var(--line)] px-5 py-4 pr-14">
+						<DialogTitle className="font-[var(--mono)] text-base font-semibold">
+							Delete {deleteProjectTarget?.name}?
+						</DialogTitle>
+						<DialogDescription className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
+							This permanently deletes the project and its issues, members, imports, tags, and test cases.
+						</DialogDescription>
+					</DialogHeader>
+					<div className="p-5">
+						{deleteProjectError ? (
+							<p role="alert" className="mb-4 rounded-md border border-[var(--block)] bg-[var(--block-bg)] px-3 py-2 text-sm text-[var(--block)]">
+								{deleteProjectError}
+							</p>
+						) : null}
+						<div className="flex justify-end gap-3">
+							<button
+								type="button"
+								disabled={deleteProjectMutation.isPending}
+								onClick={() => setDeleteProjectTarget(null)}
+								className="min-h-10 rounded-md border border-[var(--line)] px-4 text-sm font-semibold hover:bg-[var(--bg-alt)] disabled:opacity-50"
+							>
+								Cancel
+							</button>
+							<button
+								type="button"
+								disabled={deleteProjectMutation.isPending}
+								onClick={() => void handleDeleteProject()}
+								className="inline-flex min-h-10 min-w-[92px] items-center justify-center rounded-md bg-[var(--block)] px-4 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+							>
+								{deleteProjectMutation.isPending ? "Deleting..." : "Continue"}
+							</button>
+						</div>
+					</div>
+				</DialogContent>
+			</Dialog>
 			<nav className="min-h-0 flex-1 overflow-y-auto px-2" aria-label="Primary">
 				<NavLink to="/dashboard" active={pathname === "/dashboard"} icon={LayoutDashboard}>
 					Projects
@@ -397,21 +463,46 @@ function Sidebar({
 					Current team
 				</p>
 				{teamProjects.map((project) => (
-					<Link
+					<div
 						key={project.id}
-						to="/projects/$projectId"
-						params={{ projectId: project.id }}
-						search={{}}
 						className={cn(
-							"flex min-h-10 items-center gap-2 rounded-md px-2.5 text-sm",
+							"group flex min-h-10 items-center rounded-md text-sm",
 							project.id === projectId
 								? "bg-[var(--accent-bg)] font-semibold text-[var(--accent-strong)]"
 								: "text-[var(--ink-soft)] hover:bg-[var(--bg)] hover:text-[var(--ink)]",
 						)}
 					>
-						<span className="size-2 rounded-full bg-current" />{" "}
-						<span className="truncate">{project.name}</span>
-					</Link>
+						<Link
+							to="/projects/$projectId"
+							params={{ projectId: project.id }}
+							search={{}}
+							className="flex min-w-0 flex-1 items-center gap-2 px-2.5"
+						>
+							<span className="size-2 shrink-0 rounded-full bg-current" />
+							<span className="truncate">{project.name}</span>
+						</Link>
+						{project.projectRole === "admin" ? (
+							<DropdownMenu>
+								<DropdownMenuTrigger
+									aria-label={`Actions for ${project.name}`}
+									className="mr-1 grid size-8 shrink-0 place-items-center rounded-md opacity-0 hover:bg-[var(--bg-alt)] focus-visible:opacity-100 group-hover:opacity-100"
+								>
+									<EllipsisVertical className="size-4" aria-hidden="true" />
+								</DropdownMenuTrigger>
+								<DropdownMenuContent align="end" className="min-w-[150px]">
+									<DropdownMenuItem
+										variant="destructive"
+										onClick={() => {
+											setDeleteProjectError("");
+											setDeleteProjectTarget({ id: project.id, name: project.name });
+										}}
+									>
+										<Trash2 /> Delete project
+									</DropdownMenuItem>
+								</DropdownMenuContent>
+							</DropdownMenu>
+						) : null}
+					</div>
 				))}
 				{projectId ? (
 					<div className="mt-3 border-t border-[var(--line)] pt-3">

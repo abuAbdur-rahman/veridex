@@ -8,7 +8,24 @@ import { signInWithProvider, type SocialProvider } from "@/api/auth";
 import { ApiError } from "@/api/client";
 
 export function LoginScreen({ redirectTo = "/dashboard" }: { redirectTo?: string }) {
-	const [pendingProvider, setPendingProvider] = useState<SocialProvider | null>(null);
+	const [pendingProvider, setPendingProvider] = useState<SocialProvider | "development" | null>(null);
+	const showDevelopmentLogin = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+
+	async function handleDevelopmentLogin() {
+		if (pendingProvider) return;
+		setPendingProvider("development");
+		try {
+			const response = await fetch("/api/dev/test-session", {
+				method: "POST",
+				credentials: "include",
+			});
+			if (!response.ok) throw new Error("Local development login failed");
+			window.location.assign(redirectTo);
+		} catch {
+			toast.error("Local development login is unavailable.");
+			setPendingProvider(null);
+		}
+	}
 
 	async function handleSignIn(provider: SocialProvider) {
 		if (pendingProvider) return;
@@ -62,6 +79,17 @@ export function LoginScreen({ redirectTo = "/dashboard" }: { redirectTo?: string
 						{pendingProvider === "github" ? "Opening GitHub…" : "Continue with GitHub"}
 					</button>
 				</div>
+				{showDevelopmentLogin ? (
+					<button
+						type="button"
+						disabled={pendingProvider !== null}
+						onClick={() => void handleDevelopmentLogin()}
+						className="mt-3 flex min-h-12 w-full items-center justify-center gap-2.5 rounded-lg border border-dashed border-[var(--accent)] bg-transparent px-4 text-sm font-semibold text-[var(--accent)] transition-colors duration-150 hover:bg-[var(--accent)]/10 disabled:cursor-wait disabled:opacity-60"
+					>
+						{pendingProvider === "development" ? <Loader2 className="size-[18px] animate-spin" aria-hidden="true" /> : null}
+						{pendingProvider === "development" ? "Opening local session…" : "Use local test user"}
+					</button>
+				) : null}
 				<p className="mt-6 text-center text-xs text-[var(--ink-soft)]">
 					No password. No spreadsheet.
 				</p>
