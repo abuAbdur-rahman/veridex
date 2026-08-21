@@ -96,19 +96,9 @@ export async function importRoutes(fastify: FastifyInstance) {
 			await requireProjectRole(request, projectId, ["qa", "admin"]);
 			const session = await requireSession(request);
 			const input = parseInput(confirmSchema, request.body);
-			if (input.worksheetIndex === 0 && !input.statusAssigneeMapping) {
-				return confirmImport(
-					fastify.db,
-					fastify.queue,
-					projectId,
-					importJobId,
-					session.user.id,
-					input.columnMapping,
-					input.colorMapping,
-					input.defaultStatus,
-				);
+			if (!fastify.queue) {
+				throw new ValidationError({ queue: ["Import queue is unavailable"] });
 			}
-
 			return confirmImport(
 				fastify.db,
 				fastify.queue,

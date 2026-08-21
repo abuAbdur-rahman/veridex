@@ -11,6 +11,6 @@ declare module "fastify" {
 		auth: ReturnType<typeof createAuth>;
 		db: ReturnType<typeof createDb>;
 		imageStorage: ImageStorage;
-		queue: Queue;
+		queue?: Queue;
 	}
 }

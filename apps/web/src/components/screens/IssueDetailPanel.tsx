@@ -65,7 +65,9 @@ export function IssueDetailPanel({
 	const canDelete = role === "admin";
 	const developerMembers = members.filter((member) => member.role === "dev");
 	const qaMembers = members.filter((member) => member.role === "qa");
-	const visibleTransitions = getAllowedTransitions(issue.status);
+	const visibleTransitions = getAllowedTransitions(issue.status).filter(
+		(status) => status !== "rejected" || role === "dev",
+	);
 	async function run(action: () => Promise<void>) {
 		setError("");
 		try {
@@ -228,7 +230,7 @@ export function IssueDetailPanel({
 										}
 									/>
 								) : null}
-								{qaMembers.length > 2 ? (
+								{qaMembers.length > 0 ? (
 									<AssignmentMulti
 										label="QA"
 										members={qaMembers}
@@ -243,10 +245,6 @@ export function IssueDetailPanel({
 											).catch(() => undefined)
 										}
 									/>
-								) : qaMembers.length > 0 ? (
-									<p className="text-xs leading-relaxed text-[var(--ink-soft)]">
-										All QA members are assigned automatically when the issue enters QA.
-									</p>
 								) : null}
 							</div>
 						</section>

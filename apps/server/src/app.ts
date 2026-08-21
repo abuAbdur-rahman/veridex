@@ -183,13 +183,16 @@ export function buildApp(
 	app.register(devAuthRoutes);
 
 	if (options.queue) {
-		registerImportWorker({
-			db,
-			boss: options.queue,
-		});
-		registerVerifiedIssueCleanupWorker({
-			db,
-			boss: options.queue,
+		const queue = options.queue;
+		app.addHook("onReady", async () => {
+			await registerImportWorker({
+				db,
+				boss: queue,
+			});
+			await registerVerifiedIssueCleanupWorker({
+				db,
+				boss: queue,
+			});
 		});
 	}
 

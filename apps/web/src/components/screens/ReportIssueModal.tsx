@@ -42,6 +42,15 @@ export function ReportIssueModal({ open, pending = false, error, onClose, onSubm
 		return () => URL.revokeObjectURL(url);
 	}, [imageFile]);
 
+	useEffect(() => {
+		if (!open) {
+			setTab("details");
+			setImageFile(undefined);
+			setImageUrl("");
+			setImageError("");
+		}
+	}, [open]);
+
 	function chooseFile(file: File | undefined) {
 		setImageError("");
 		if (!file) return;
@@ -59,6 +68,16 @@ export function ReportIssueModal({ open, pending = false, error, onClose, onSubm
 
 	function handleSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
+		const trimmedImageUrl = imageUrl.trim();
+		if (trimmedImageUrl) {
+			try {
+				if (new URL(trimmedImageUrl).protocol !== "https:") throw new Error("Invalid image URL");
+			} catch {
+				setImageError("Image URL must be a valid HTTPS URL.");
+				setTab("image");
+				return;
+			}
+		}
 		const data = new FormData(event.currentTarget);
 		const browser = String(data.get("browser") ?? "").trim();
 		const os = String(data.get("os") ?? "").trim();
@@ -70,7 +89,7 @@ export function ReportIssueModal({ open, pending = false, error, onClose, onSubm
 			environment: browser || os || page ? { browser: browser || undefined, os: os || undefined, page: page || undefined } : undefined,
 			stepsToReproduce: String(data.get("steps") ?? "").trim() || undefined,
 			imageFile,
-			imageUrl: imageUrl.trim() || undefined,
+			imageUrl: trimmedImageUrl || undefined,
 		});
 	}
 

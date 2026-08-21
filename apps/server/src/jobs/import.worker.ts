@@ -12,6 +12,7 @@ import {
 	projectMember,
 } from "../db/schema/index.js";
 import type { IssueStatus } from "../services/issue.service.js";
+import { expectedRoleForStatus } from "../services/import.service.js";
 
 const THEME_COLORS = [
 	"FFFFFF",
@@ -74,14 +75,6 @@ export interface ParsedRow {
 	[key: string]: string | number | boolean | null;
 }
 
-export interface ParseResult {
-	headers: string[];
-	sampleRows: ParsedRow[];
-	columnMapping: Record<string, string>;
-	colorMapping: Record<string, string>;
-	totalRows: number;
-}
-
 export interface ParsedRowWithColor {
 	data: ParsedRow;
 	colorHex: string | null;
@@ -104,6 +97,28 @@ export interface ParseForImportResult {
 	colorMapping: Record<string, string>;
 	totalRows: number;
 	worksheets: ImportWorksheet[];
+}
+
+export type StoredParsedRows =
+	| ParsedRowWithColor[]
+	| { version: number; worksheets: ImportWorksheet[] }
+	| null;
+
+export function readParsedRows(
+	stored: StoredParsedRows,
+	worksheetIndex: number,
+): {
+	rows: ParsedRowWithColor[] | null;
+	worksheet: ImportWorksheet | null;
+	isLegacy: boolean;
+} {
+	if (Array.isArray(stored)) {
+		return { rows: stored, worksheet: null, isLegacy: true };
+	}
+	const worksheet = stored?.version === 2
+		? stored.worksheets[worksheetIndex] ?? null
+		: null;
+	return { rows: worksheet?.rows ?? null, worksheet, isLegacy: false };
 }
 
 function autoMapColumns(headers: string[]): Record<string, string> {
@@ -142,80 +157,6 @@ function findRowColorHex(
 		}
 	}
 	return null;
-}
-
-export async function parseExcelFile(fileBuffer: Uint8Array): Promise<ParseResult> {
-	const workbook = new ExcelJS.Workbook();
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- ExcelJS load() Buffer type incompatible with Node 20+ Buffer
-	await workbook.xlsx.load(fileBuffer as any);
-
-	const sheet = workbook.worksheets[0];
-	if (!sheet || sheet.rowCount === 0) {
-		return {
-			headers: [],
-			sampleRows: [],
-			columnMapping: {},
-			colorMapping: {},
-			totalRows: 0,
-		};
-	}
-
-	const headerRow = sheet.getRow(1);
-	const headers: string[] = [];
-	headerRow.eachCell((cell, colNumber) => {
-		headers[colNumber - 1] = String(cell.value ?? "");
-	});
-
-	const colorMapping: Record<string, string> = {};
-	for (let r = 2; r <= sheet.rowCount; r++) {
-		const sheetRow = sheet.getRow(r);
-		for (let c = 1; c <= headers.length; c++) {
-			const cell = sheetRow.getCell(c);
-			const fill = cell.fill;
-			let hex: string | null = null;
-			if (fill && fill.type === "pattern" && "fgColor" in fill && fill.fgColor) {
-				hex = resolveCellColor(fill.fgColor as { rgb?: string; argb?: string; theme?: number; tint?: number });
-			}
-			const status = hexToStatus(hex);
-			if (status && hex && colorMapping[hex] === undefined) {
-				colorMapping[hex] = status;
-			}
-		}
-	}
-
-	const totalRows = sheet.rowCount - 1;
-	const sampleRows: ParsedRow[] = [];
-	const sampleLimit = Math.min(totalRows, 5);
-	for (let r = 2; r <= sampleLimit + 1; r++) {
-		const sheetRow = sheet.getRow(r);
-		const rowData: ParsedRow = {};
-		for (let c = 1; c <= headers.length; c++) {
-			rowData[headers[c - 1]] = sheetRow.getCell(c).value as string | number | boolean | null;
-		}
-		sampleRows.push(rowData);
-	}
-
-	return { headers, sampleRows, columnMapping: autoMapColumns(headers), colorMapping, totalRows };
-}
-
-export function parseCsvFile(csvText: string): ParseResult {
-	const { data, errors } = Papa.parse<Record<string, string>>(csvText, {
-		header: true,
-		skipEmptyLines: true,
-	});
-
-	if (errors.length > 0) {
-		const criticalErrors = errors.filter((e) => e.type === "Quotes" || e.type === "Delimiter");
-		if (criticalErrors.length > 0) {
-			throw new Error(`CSV parsing failed: ${criticalErrors.map((e) => e.message).join(", ")}`);
-		}
-	}
-
-	const headers = data.length > 0 ? Object.keys(data[0]) : [];
-	const totalRows = data.length;
-	const sampleRows: ParsedRow[] = data.slice(0, 5);
-
-	return { headers, sampleRows, columnMapping: autoMapColumns(headers), colorMapping: {}, totalRows };
 }
 
 export async function parseExcelFileForImport(fileBuffer: Uint8Array): Promise<ParseForImportResult> {
@@ -418,10 +359,10 @@ async function markImportFailed(db: Database, importJobId: string, error: unknow
 		.where(eq(importJobs.id, importJobId));
 }
 
-export function registerImportWorker(deps: ImportWorkerDeps): void {
+export function registerImportWorker(deps: ImportWorkerDeps) {
 	const { db, boss } = deps;
 
-	boss.work("import-insert", async (jobs: Array<{ data: { importJobId: string; worksheetIndex?: number; columnMapping: Record<string, string>; colorMapping?: Record<string, string>; defaultStatus?: string; statusAssigneeMapping?: Record<string, string[]> } }>) => {
+	return boss.work("import-insert", async (jobs: Array<{ data: { importJobId: string; worksheetIndex?: number; columnMapping: Record<string, string>; colorMapping?: Record<string, string>; defaultStatus?: string; statusAssigneeMapping?: Record<string, string[]> } }>) => {
 		for (const job of jobs) {
 			const { importJobId, worksheetIndex = 0, columnMapping, colorMapping, defaultStatus, statusAssigneeMapping } = job.data;
 
@@ -439,9 +380,10 @@ export function registerImportWorker(deps: ImportWorkerDeps): void {
 					.set({ status: "processing" })
 					.where(eq(importJobs.id, importJobId));
 
-				const stored = importJob.parsedRows as ParsedRowWithColor[] | { version: number; worksheets: ImportWorksheet[] } | null;
-				const worksheet = stored && !Array.isArray(stored) && stored.version === 2 ? stored.worksheets[worksheetIndex] : null;
-				const rows = Array.isArray(stored) ? stored : worksheet?.rows ?? null;
+				const { rows } = readParsedRows(
+					importJob.parsedRows as StoredParsedRows,
+					worksheetIndex,
+				);
 				if (!rows || rows.length === 0) {
 					throw new Error("No parsed rows found for import job");
 				}
@@ -460,7 +402,7 @@ export function registerImportWorker(deps: ImportWorkerDeps): void {
 				const developerIds = new Set(devMembers.map((member) => member.userId));
 				const qaIds = new Set(qaMembers.map((member) => member.userId));
 				for (const [status, assigneeIds] of Object.entries(normalizedAssignments)) {
-					const validIds = status === "in_qa" || status === "verified" ? qaIds : developerIds;
+					const validIds = expectedRoleForStatus(status) === "qa" ? qaIds : developerIds;
 					if (assigneeIds.some((userId) => !validIds.has(userId))) {
 						throw new Error("Status assignee must have the matching project role");
 					}
@@ -502,7 +444,6 @@ export function registerImportWorker(deps: ImportWorkerDeps): void {
 								)
 								.limit(1);
 							if (existingIssue || seenTitles.has(titleKey)) return false;
-							seenTitles.add(titleKey);
 
 							const [projectRow] = await tx
 								.update(project)
@@ -581,8 +522,12 @@ export function registerImportWorker(deps: ImportWorkerDeps): void {
 							return true;
 						});
 
-						if (inserted) imported++;
+						if (inserted) {
+							seenTitles.add(titleKey);
+							imported++;
+						}
 					} catch (err) {
+						console.error("Import row failed", err);
 						failed++;
 						errors.push({ row: i + 2, error: err instanceof Error ? err.message : "Unknown error" });
 					}
@@ -600,7 +545,12 @@ export function registerImportWorker(deps: ImportWorkerDeps): void {
 					})
 					.where(eq(importJobs.id, importJobId));
 			} catch (err) {
-				await markImportFailed(db, importJobId, err);
+				console.error("Import job failed", err);
+				try {
+					await markImportFailed(db, importJobId, err);
+				} catch (markFailedError) {
+					console.error("Failed to mark import job as failed", markFailedError);
+				}
 			}
 		}
 	});

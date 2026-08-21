@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
 	resolveCellColor,
 	hexToStatus,
-	parseCsvFile,
+	parseCsvFileForImport,
 	parseExcelFileForImport,
 	resolveRowStatus,
 	normalizeImportSeverity,
@@ -68,16 +68,16 @@ describe("hexToStatus", () => {
 	});
 });
 
-describe("parseCsvFile", () => {
+describe("parseCsvFileForImport", () => {
 	it("parses basic CSV", () => {
-		const result = parseCsvFile("Title,Description\nBug1,Desc1\nBug2,Desc2");
+		const result = parseCsvFileForImport("Title,Description\nBug1,Desc1\nBug2,Desc2");
 		expect(result.headers).toEqual(["Title", "Description"]);
 		expect(result.totalRows).toBe(2);
-		expect(result.sampleRows).toHaveLength(2);
+		expect(result.allRows).toHaveLength(2);
 	});
 
 	it("auto-maps columns", () => {
-		const result = parseCsvFile(
+		const result = parseCsvFileForImport(
 			"Bug Title,Priority,Status\nFix login,High,Open",
 		);
 		expect(result.columnMapping).toEqual({
@@ -88,14 +88,14 @@ describe("parseCsvFile", () => {
 	});
 
 	it("skips empty lines", () => {
-		const result = parseCsvFile("Title,Description\nBug1,Desc1\n\nBug2,Desc2\n");
+		const result = parseCsvFileForImport("Title,Description\nBug1,Desc1\n\nBug2,Desc2\n");
 		expect(result.totalRows).toBe(2);
 	});
 
 	it("returns empty result for no data", () => {
-		const result = parseCsvFile("Title,Description\n");
+		const result = parseCsvFileForImport("Title,Description\n");
 		expect(result.totalRows).toBe(0);
-		expect(result.sampleRows).toHaveLength(0);
+		expect(result.allRows).toHaveLength(0);
 	});
 });
 
@@ -305,12 +305,12 @@ describe("isExternalScreenshotUrl", () => {
 
 describe("import worker registration", () => {
 	it("registers import-insert handler only", async () => {
-		const work = vi.fn();
+		const work = vi.fn().mockResolvedValue("worker-id");
 		const registerImportWorker = (
 			await import("./import.worker.js")
 		).registerImportWorker;
 
-		registerImportWorker({
+		await registerImportWorker({
 			db: {} as never,
 			boss: { work } as never,
 		});

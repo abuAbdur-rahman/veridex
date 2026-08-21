@@ -46,8 +46,6 @@ export interface IssueFilters {
 	status?: IssueStatus;
 	assigneeId?: string;
 	qaAssigneeId?: string;
-	developerAssigneeIds?: string[];
-	qaAssigneeIds?: string[];
 	severity?: Severity;
 	search?: string;
 	limit?: number;

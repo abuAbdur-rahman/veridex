@@ -199,7 +199,7 @@ describe("import.service", () => {
 				select: vi.fn(() => ({
 					from: vi.fn(() => ({
 						where: vi.fn(() => ({
-							limit: vi.fn(async () => [{ status: "completed", colorMapping: {} }]),
+							limit: vi.fn(async () => [{ status: "completed", colorMapping: {}, parsedRows: [{ data: { Title: "Bug" }, colorHex: null }] }]),
 						})),
 					})),
 				})),
@@ -231,10 +231,23 @@ describe("import.service", () => {
 			).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
 		});
 
+		it("throws if completed job has already been consumed", async () => {
+			const db = {
+				select: createJobSelect({ status: "completed", parsedRows: null }),
+			} as unknown as Database;
+
+			await expect(
+				confirmImport(db, {} as Queue, projectId, importJobId, userId, {}),
+			).rejects.toMatchObject({
+				code: "VALIDATION_ERROR",
+				details: { status: ["Import has already been consumed"] },
+			});
+		});
+
 		it("does not persist mapping when enqueue fails", async () => {
 			const update = createUpdateMock();
 			const db = {
-				select: createJobSelect({ status: "completed", colorMapping: {} }),
+				select: createJobSelect({ status: "completed", colorMapping: {}, parsedRows: [{ data: { Title: "Bug" }, colorHex: null }] }),
 				update,
 			} as unknown as Database;
 			const queue = {

@@ -27,17 +27,17 @@ const mockDb = {
 } as unknown as Database;
 
 function createSelectMock(result: Array<Record<string, unknown>>) {
+	const limitFn = vi.fn(async () => result);
 	return vi.fn(() => ({
 		from: vi.fn(() => ({
-			where: vi.fn(() => ({
-				limit: vi.fn(async () => result),
-			})),
+			where: vi.fn(() => Object.assign(Promise.resolve(result), { limit: limitFn })),
+			limit: limitFn,
 		})),
 	})) as unknown as typeof mockDb.select;
 }
 
 function memberSelectMock() {
-	return createSelectMock([{ userId: "user-1" }]);
+	return createSelectMock([{ userId: "user-1", role: "dev" }]);
 }
 
 describe("issue.service", () => {
@@ -440,13 +440,21 @@ describe("issue.service", () => {
 
 	describe("assignIssue", () => {
 		it("validates assignee is project member", async () => {
-			const limit = vi
-				.fn()
-				.mockResolvedValueOnce([{ userId: "user-1" }])
-				.mockResolvedValueOnce([]);
+			const results = [
+				[{ userId: "user-1", role: "dev" }],
+				[],
+			];
+			let callIdx = 0;
+			const whereFn = vi.fn(() => {
+				const r = results[callIdx++] ?? [];
+				return Object.assign(Promise.resolve(r), {
+					limit: vi.fn(async () => r),
+				});
+			});
 			mockDb.select = vi.fn(() => ({
 				from: vi.fn(() => ({
-					where: vi.fn(() => ({ limit })),
+					where: whereFn,
+					limit: vi.fn(async () => results[callIdx++] ?? []),
 				})),
 			})) as unknown as typeof mockDb.select;
 

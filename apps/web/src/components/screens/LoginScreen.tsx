@@ -59,7 +59,7 @@ export function LoginScreen({ redirectTo = "/dashboard" }: { redirectTo?: string
 						className="flex min-h-12 items-center justify-center gap-2.5 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--ink)] transition-colors duration-150 hover:border-[var(--ink-soft)] hover:bg-[var(--bg-alt)] disabled:cursor-wait disabled:opacity-60"
 					>
 						{pendingProvider === "google" ? (
-							<Loader2 className="size-[18px] animate-spin" aria-hidden="true" />
+							<Loader2 className="size-[18px] animate-spin motion-reduce:animate-none" aria-hidden="true" />
 						) : (
 							<SiGoogle className="size-[18px]" aria-hidden="true" />
 						)}
@@ -72,7 +72,7 @@ export function LoginScreen({ redirectTo = "/dashboard" }: { redirectTo?: string
 						className="flex min-h-12 items-center justify-center gap-2.5 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--ink)] transition-colors duration-150 hover:border-[var(--ink-soft)] hover:bg-[var(--bg-alt)] disabled:cursor-wait disabled:opacity-60"
 					>
 						{pendingProvider === "github" ? (
-							<Loader2 className="size-[18px] animate-spin" aria-hidden="true" />
+							<Loader2 className="size-[18px] animate-spin motion-reduce:animate-none" aria-hidden="true" />
 						) : (
 							<SiGithub className="size-[18px]" aria-hidden="true" />
 						)}
@@ -86,7 +86,7 @@ export function LoginScreen({ redirectTo = "/dashboard" }: { redirectTo?: string
 						onClick={() => void handleDevelopmentLogin()}
 						className="mt-3 flex min-h-12 w-full items-center justify-center gap-2.5 rounded-lg border border-dashed border-[var(--accent)] bg-transparent px-4 text-sm font-semibold text-[var(--accent)] transition-colors duration-150 hover:bg-[var(--accent)]/10 disabled:cursor-wait disabled:opacity-60"
 					>
-						{pendingProvider === "development" ? <Loader2 className="size-[18px] animate-spin" aria-hidden="true" /> : null}
+						{pendingProvider === "development" ? <Loader2 className="size-[18px] animate-spin motion-reduce:animate-none" aria-hidden="true" /> : null}
 						{pendingProvider === "development" ? "Opening local session…" : "Use local test user"}
 					</button>
 				) : null}

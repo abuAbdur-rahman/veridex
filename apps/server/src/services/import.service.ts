@@ -7,8 +7,8 @@ import { projectMember } from "../db/schema/project.js";
 import {
 	parseExcelFileForImport,
 	parseCsvFileForImport,
-	type ParsedRowWithColor,
-	type ImportWorksheet,
+	type StoredParsedRows,
+	readParsedRows,
 	normalizeImportStatus,
 	normalizeStatusAssigneeMapping,
 } from "../jobs/import.worker.js";
@@ -44,6 +44,10 @@ export interface ImportErrorsResult {
 	importedRows: number;
 	failedRows: number;
 	errors: Array<{ row: number; error: string }> | null;
+}
+
+export function expectedRoleForStatus(status: string): "dev" | "qa" {
+	return status === "in_qa" || status === "verified" ? "qa" : "dev";
 }
 
 async function verifyProjectMembership(
@@ -138,17 +142,17 @@ export async function getPreview(
 		});
 	}
 
-	const stored = job.parsedRows as ParsedRowWithColor[] | { version: number; worksheets: ImportWorksheet[] } | null;
-	const worksheet = stored && !Array.isArray(stored) && stored.version === 2 ? stored.worksheets[worksheetIndex] : null;
-	if (!Array.isArray(stored) && !worksheet) throw new ValidationError({ worksheetIndex: ["Worksheet not found"] });
-	const parsedRows = Array.isArray(stored) ? stored : worksheet?.rows ?? [];
-	const selectedWorksheetIndex = Array.isArray(stored) ? 0 : worksheetIndex;
-	const headers = Array.isArray(stored) ? (job.columnMapping ? Object.keys(job.columnMapping) : []) : worksheet?.header ?? [];
+	const stored = job.parsedRows as StoredParsedRows;
+	const { rows, worksheet, isLegacy } = readParsedRows(stored, worksheetIndex);
+	if (!isLegacy && !worksheet) throw new ValidationError({ worksheetIndex: ["Worksheet not found"] });
+	const parsedRows = rows ?? [];
+	const selectedWorksheetIndex = isLegacy ? 0 : worksheetIndex;
+	const headers = isLegacy ? (job.columnMapping ? Object.keys(job.columnMapping) : []) : worksheet?.header ?? [];
 	const sampleRows = parsedRows.slice(0, 5).map((row) => row.data);
-	const selectedColumnMapping = Array.isArray(stored)
+	const selectedColumnMapping = isLegacy
 		? (job.columnMapping as Record<string, string> | null)
 		: worksheet?.columnMapping ?? null;
-	const selectedColorMapping = Array.isArray(stored)
+	const selectedColorMapping = isLegacy
 		? (job.colorMapping as Record<string, string> | null)
 		: worksheet?.colorMapping ?? null;
 	const colorCounts = parsedRows.reduce<Record<string, number>>((counts, row) => {
@@ -160,7 +164,7 @@ export async function getPreview(
 		id: job.id,
 		fileType: job.fileType,
 		originalName: job.originalName,
-		totalRows: Array.isArray(stored) ? job.totalRows : worksheet?.totalRows ?? 0,
+		totalRows: isLegacy ? job.totalRows : worksheet?.totalRows ?? 0,
 		headers,
 		sampleRows,
 		columnMapping: selectedColumnMapping,
@@ -172,9 +176,11 @@ export async function getPreview(
 				? ((job.errorLog as Array<{ row: number; error: string }> | null)?.[0]?.error ??
 					"Import failed")
 				: null,
-		worksheets: Array.isArray(stored)
+		worksheets: isLegacy
 			? [{ index: 0, name: job.originalName, totalRows: parsedRows.length }]
-			: (stored?.worksheets ?? []).map(({ index, name, totalRows }) => ({ index, name, totalRows })),
+			: (!Array.isArray(stored) ? stored?.worksheets ?? [] : []).map(
+				({ index, name, totalRows }) => ({ index, name, totalRows }),
+			),
 		selectedWorksheetIndex,
 	};
 }
@@ -211,13 +217,12 @@ export async function confirmImport(
 			status: ["Import must be parsed before confirming"],
 		});
 	}
-	const stored = job.parsedRows as ParsedRowWithColor[] | { version: number; worksheets: ImportWorksheet[] } | null;
-	const selectedRows = Array.isArray(stored)
-		? stored
-		: stored?.version === 2
-			? stored.worksheets[worksheetIndex]?.rows
-			: undefined;
-	if (stored !== null && stored !== undefined && !selectedRows) {
+	const stored = job.parsedRows as StoredParsedRows;
+	if (!stored) {
+		throw new ValidationError({ status: ["Import has already been consumed"] });
+	}
+	const { rows: selectedRows, worksheet, isLegacy } = readParsedRows(stored, worksheetIndex);
+	if (!isLegacy && !worksheet) {
 		throw new ValidationError({ worksheetIndex: ["Worksheet not found"] });
 	}
 	if (selectedRows?.length === 0) {
@@ -231,7 +236,7 @@ export async function confirmImport(
 		const membersById = new Map(memberRows.map((row) => [row.userId, row.role]));
 		for (const [status, assigneeIds] of Object.entries(normalizeStatusAssigneeMapping(statusAssigneeMapping))) {
 			for (const assigneeId of assigneeIds) {
-				const expectedRole = ["in_qa", "verified"].includes(status) ? "qa" : "dev";
+				const expectedRole = expectedRoleForStatus(status);
 				if (membersById.get(assigneeId) !== expectedRole) {
 					throw new ValidationError({
 						statusAssigneeMapping: ["Assignee must have the matching project role"],
@@ -267,6 +272,7 @@ export async function confirmImport(
 	await db
 		.update(importJobs)
 		.set({
+			status: "pending",
 			columnMapping,
 			colorMapping: colorMapping ?? job.colorMapping,
 		})

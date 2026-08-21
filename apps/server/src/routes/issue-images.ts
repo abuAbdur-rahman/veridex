@@ -38,7 +38,7 @@ export async function issueImageRoutes(fastify: FastifyInstance) {
 		const { projectId } = parseInput(uploadParamsSchema, request.params);
 		await requireProjectRole(request, projectId, allProjectRoles);
 		const file = await request.file();
-		if (!file || !(file.mimetype in imageTypes)) {
+		if (!file || !Object.hasOwn(imageTypes, file.mimetype)) {
 			throw new ValidationError({ image: ["Upload a PNG, JPEG, or WebP image"] });
 		}
 

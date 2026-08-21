@@ -197,7 +197,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 											setLogoutBusy(false);
 										}
 									}}
-									className="inline-flex min-h-10 min-w-[92px] items-center justify-center rounded-md bg-[var(--block)] px-4 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+									className="inline-flex min-h-10 min-w-[92px] items-center justify-center rounded-md border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--ink)] hover:bg-[var(--bg-alt)] disabled:opacity-50"
 								>
 									{logoutBusy ? "Logging out..." : "Log out"}
 								</button>
@@ -447,7 +447,7 @@ function Sidebar({
 								type="button"
 								disabled={deleteProjectMutation.isPending}
 								onClick={() => void handleDeleteProject()}
-								className="inline-flex min-h-10 min-w-[92px] items-center justify-center rounded-md bg-[var(--block)] px-4 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+									className="inline-flex min-h-10 min-w-[92px] items-center justify-center rounded-md border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--ink)] hover:bg-[var(--bg-alt)] disabled:opacity-50"
 							>
 								{deleteProjectMutation.isPending ? "Deleting..." : "Continue"}
 							</button>
@@ -561,7 +561,7 @@ function Sidebar({
 				<button
 					type="button"
 					onClick={onLogout}
-					className="flex min-h-10 w-full items-center gap-2.5 rounded-md border-l-2 border-l-transparent px-2.5 text-sm font-medium text-[var(--ink-soft)] hover:bg-[var(--block-bg)] hover:text-[var(--block)]"
+					className="flex min-h-10 w-full items-center gap-2.5 rounded-md border-l-2 border-l-transparent px-2.5 text-sm font-medium text-[var(--ink-soft)] hover:bg-[var(--bg)] hover:text-[var(--ink)]"
 				>
 					<LogOut className="size-4" aria-hidden="true" />
 					Logout
