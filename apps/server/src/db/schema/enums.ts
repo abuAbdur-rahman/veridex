@@ -18,6 +18,11 @@ export const issueStatusEnum = pgEnum("issue_status", [
 	"in_progress",
 	"in_qa",
 	"verified",
+	"rejected",
+]);
+export const issueAssignmentRoleEnum = pgEnum("issue_assignment_role", [
+	"dev",
+	"qa",
 ]);
 export const importStatusEnum = pgEnum("import_status", [
 	"pending",

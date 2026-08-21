@@ -14,6 +14,7 @@ const testEnvironment: Environment = {
 		"postgresql://veridex:veridex@localhost:5432/veridex_dev",
 	BETTER_AUTH_SECRET: "test-secret-that-is-long-enough",
 	BETTER_AUTH_URL: "http://localhost:3001",
+	DEV_AUTH_ENABLED: false,
 	R2_BUCKET_NAME: "veridex-uploads",
 	TRUST_PROXY: false,
 };
@@ -72,6 +73,29 @@ describe("Veridex server", () => {
 				message: "Route GET:/does-not-exist not found",
 			},
 		});
+	});
+
+	it("does not expose the local test session endpoint by default", async () => {
+		const response = await createApp().inject({
+			method: "POST",
+			url: "/api/dev/test-session",
+		});
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	it("does not expose the local test session endpoint on non-loopback hosts", async () => {
+		const response = await createApp({
+			...testEnvironment,
+			HOST: "0.0.0.0",
+			NODE_ENV: "development",
+			DEV_AUTH_ENABLED: true,
+		}).inject({
+			method: "POST",
+			url: "/api/dev/test-session",
+		});
+
+		expect(response.statusCode).toBe(404);
 	});
 
 	it("mounts auth without disabled-provider warnings", async () => {

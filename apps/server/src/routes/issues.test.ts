@@ -74,7 +74,7 @@ beforeEach(() => {
 	requireSession.mockResolvedValue({ user: { id: "user-1" } });
 	requireProjectRole.mockResolvedValue({
 		session: { user: { id: "user-1" } },
-		membership: { projectRole: "admin" },
+		membership: { role: "admin" },
 	});
 });
 
@@ -162,6 +162,41 @@ describe("issue routes", () => {
 		);
 	});
 
+	it("accepts an HTTPS image URL when creating an issue", async () => {
+		createIssue.mockResolvedValue({ id: issueId, imageUrl: "https://drive.google.com/image.png" });
+
+		const response = await (await createApp()).inject({
+			method: "POST",
+			url: `/api/projects/${projectId}/issues`,
+			payload: {
+				title: "Screenshot attached",
+				imageUrl: "https://drive.google.com/image.png",
+			},
+		});
+
+		expect(response.statusCode).toBe(201);
+		expect(createIssue).toHaveBeenCalledWith(
+			expect.anything(),
+			projectId,
+			"user-1",
+			{
+				title: "Screenshot attached",
+				imageUrl: "https://drive.google.com/image.png",
+			},
+		);
+	});
+
+	it("rejects insecure issue image URLs", async () => {
+		const response = await (await createApp()).inject({
+			method: "POST",
+			url: `/api/projects/${projectId}/issues`,
+			payload: { title: "Screenshot attached", imageUrl: "http://example.com/image.png" },
+		});
+
+		expect(response.statusCode).toBe(422);
+		expect(createIssue).not.toHaveBeenCalled();
+	});
+
 	it("lists issues with parsed filters", async () => {
 		listIssues.mockResolvedValue([]);
 
@@ -218,6 +253,42 @@ describe("issue routes", () => {
 		);
 	});
 
+	it("accepts a generated image path and permits removing it", async () => {
+		const imageUrl = `/api/projects/${projectId}/issue-images/44444444-4444-4444-8444-444444444444.png`;
+		updateIssue.mockResolvedValue({ id: issueId, imageUrl });
+
+		const app = await createApp();
+		const setResponse = await app.inject({
+			method: "PATCH",
+			url: `/api/projects/${projectId}/issues/${issueId}`,
+			payload: { imageUrl },
+		});
+		const removeResponse = await app.inject({
+			method: "PATCH",
+			url: `/api/projects/${projectId}/issues/${issueId}`,
+			payload: { imageUrl: null },
+		});
+
+		expect(setResponse.statusCode).toBe(200);
+		expect(removeResponse.statusCode).toBe(200);
+		expect(updateIssue).toHaveBeenNthCalledWith(
+			1,
+			expect.anything(),
+			projectId,
+			issueId,
+			"user-1",
+			{ imageUrl },
+		);
+		expect(updateIssue).toHaveBeenNthCalledWith(
+			2,
+			expect.anything(),
+			projectId,
+			issueId,
+			"user-1",
+			{ imageUrl: null },
+		);
+	});
+
 	it("passes source 'web' and note to updateStatus", async () => {
 		updateStatus.mockResolvedValue({ id: issueId, status: "in_progress" });
 
@@ -236,18 +307,27 @@ describe("issue routes", () => {
 			"in_progress",
 			"web",
 			"Starting work",
+			"admin",
 		);
 	});
 
 	const assigneeId = "44444444-4444-4444-8444-444444444444";
+	const qaAssigneeId = "55555555-5555-4555-8555-555555555555";
 
 	it("requires qa or admin role to assign", async () => {
-		assignIssue.mockResolvedValue({ id: issueId, assigneeId });
+		assignIssue.mockResolvedValue({
+			id: issueId,
+			developerAssigneeIds: [assigneeId],
+			qaAssigneeIds: [qaAssigneeId],
+		});
 
 		const response = await (await createApp()).inject({
 			method: "PATCH",
 			url: `/api/projects/${projectId}/issues/${issueId}/assign`,
-			payload: { assigneeId },
+			payload: {
+				developerAssigneeIds: [assigneeId],
+				qaAssigneeIds: [qaAssigneeId],
+			},
 		});
 
 		expect(response.statusCode).toBe(200);
@@ -261,8 +341,8 @@ describe("issue routes", () => {
 			projectId,
 			issueId,
 			"user-1",
-			assigneeId,
-			null,
+			[assigneeId],
+			[qaAssigneeId],
 			"web",
 		);
 	});

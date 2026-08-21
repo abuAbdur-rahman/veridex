@@ -69,6 +69,8 @@ pnpm typecheck
 pnpm dev                     # http://127.0.0.1:3001
 ```
 
+For authenticated local E2E, keep the server loopback-bound and set `DEV_AUTH_ENABLED=true` with `NODE_ENV=development`. The development-only `POST /api/dev/test-session` route creates or signs in `dev-user@localhost.test`, provisions onboarding, and forwards the normal Better Auth session cookie. It is not registered unless the flag, environment, and loopback `HOST` guards all pass.
+
 ## Verification
 
 Run from `apps/server/` before reporting work complete:
@@ -81,3 +83,5 @@ pnpm db:generate   # after any schema change, then review the migration SQL
 ```
 
 Never edit a generated migration by hand — fix the schema source and regenerate.
+
+Local-auth changes also require focused coverage for disabled/non-loopback route exposure, environment validation, Better Auth email/password configuration, cookie forwarding, and repeat-session behavior.

@@ -19,10 +19,13 @@ export interface ServerIssue {
 	stepsToReproduce: string | null;
 	expectedResult: string | null;
 	actualResult: string | null;
+	imageUrl: string | null;
 	projectId: string;
 	reporterId: string;
 	assigneeId: string | null;
 	qaAssigneeId: string | null;
+	developerAssigneeIds: string[];
+	qaAssigneeIds: string[];
 	testCaseId: string | null;
 	importJobId: string | null;
 	createdAt: string | null;
@@ -59,22 +62,26 @@ export interface CreateIssueInput {
 	assigneeId?: string;
 	qaAssigneeId?: string;
 	testCaseId?: string;
+	imageUrl?: string;
 }
 export interface UpdateIssueInput
 	extends Partial<
 		Omit<
 			CreateIssueInput,
-			"assigneeId" | "qaAssigneeId" | "testCaseId" | "description" | "environment"
+			"assigneeId" | "qaAssigneeId" | "testCaseId" | "description" | "environment" | "imageUrl"
 		>
 	> {
 	assigneeId?: string | null;
 	qaAssigneeId?: string | null;
+	developerAssigneeIds?: string[];
+	qaAssigneeIds?: string[];
 	testCaseId?: string | null;
 	description?: string | null;
 	environment?: IssueEnvironment | null;
+	imageUrl?: string | null;
 }
 
-const statuses = new Set<IssueStatus>(["backlog", "in_progress", "in_qa", "verified"]);
+const statuses = new Set<IssueStatus>(["backlog", "in_progress", "in_qa", "verified", "rejected"]);
 const severities = new Set<Severity>(["low", "medium", "high", "critical"]);
 const nullableString = (v: unknown): v is string | null => v === null || typeof v === "string";
 const isEnvironment = (v: unknown): v is IssueEnvironment | null => {
@@ -99,10 +106,15 @@ export function isServerIssue(v: unknown): v is ServerIssue {
 		nullableString(v.stepsToReproduce) &&
 		nullableString(v.expectedResult) &&
 		nullableString(v.actualResult) &&
+		nullableString(v.imageUrl) &&
 		typeof v.projectId === "string" &&
 		typeof v.reporterId === "string" &&
 		nullableString(v.assigneeId) &&
 		nullableString(v.qaAssigneeId) &&
+		Array.isArray(v.developerAssigneeIds) &&
+		v.developerAssigneeIds.every((id): id is string => typeof id === "string") &&
+		Array.isArray(v.qaAssigneeIds) &&
+		v.qaAssigneeIds.every((id): id is string => typeof id === "string") &&
 		nullableString(v.testCaseId) &&
 		nullableString(v.importJobId) &&
 		nullableString(v.createdAt) &&
@@ -144,6 +156,16 @@ export function createIssue(projectId: string, input: CreateIssueInput) {
 		body: JSON.stringify(input),
 	});
 }
+export function uploadIssueImage(projectId: string, file: File) {
+	const body = new FormData();
+	body.append("image", file);
+	return apiRequest(
+		`/api/projects/${encodeURIComponent(projectId)}/issue-images`,
+		(value): value is { imageUrl: string } =>
+			isRecord(value) && typeof value.imageUrl === "string",
+		{ method: "POST", body },
+	);
+}
 export function getIssue(projectId: string, issueId: string) {
 	return apiRequest(
 		`/api/projects/${encodeURIComponent(projectId)}/issues/${encodeURIComponent(issueId)}`,
@@ -172,7 +194,7 @@ export function updateIssueStatus(
 export function assignIssue(
 	projectId: string,
 	issueId: string,
-	input: { assigneeId?: string | null; qaAssigneeId?: string | null },
+	input: { developerAssigneeIds: string[]; qaAssigneeIds: string[] },
 ) {
 	return apiRequest(
 		`/api/projects/${encodeURIComponent(projectId)}/issues/${encodeURIComponent(issueId)}/assign`,

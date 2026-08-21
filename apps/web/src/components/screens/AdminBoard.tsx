@@ -19,7 +19,11 @@ export function AdminBoard({
 }: AdminBoardProps) {
 	const shown =
 		view === "dev"
-			? issues.filter((issue) => !issue.assignee || issue.assignee.id === currentUserId)
+			? issues.filter(
+					(issue) =>
+						issue.developerAssignees.length === 0 ||
+						issue.developerAssignees.some((assignee) => assignee.id === currentUserId),
+				)
 			: view === "qa"
 				? issues.filter((issue) => issue.status === "in_qa")
 				: view === "tester"

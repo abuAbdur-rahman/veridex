@@ -17,9 +17,19 @@ import { teamRoutes } from "./routes/teams.js";
 import { inviteRoutes } from "./routes/invites.js";
 import { projectRoutes } from "./routes/projects.js";
 import { issueRoutes } from "./routes/issues.js";
+import multipart from "@fastify/multipart";
+import { createImageStorage, type ImageStorage } from "./lib/r2.js";
+import { issueImageRoutes } from "./routes/issue-images.js";
+import { importRoutes } from "./routes/import.js";
+import type { Queue } from "./jobs/queue.js";
+import { registerImportWorker } from "./jobs/import.worker.js";
+import { registerVerifiedIssueCleanupWorker } from "./jobs/verified-issue-cleanup.worker.js";
+import { devAuthRoutes } from "./routes/dev-auth.js";
 
 export interface BuildAppOptions {
 	db?: Database;
+	imageStorage?: ImageStorage;
+	queue?: Queue;
 }
 
 const fastifyClientErrors: Readonly<
@@ -116,7 +126,14 @@ export function buildApp(
 	app.decorate("config", environment);
 	app.decorate("db", db);
 	app.decorate("auth", createAuth(db, environment));
+	app.decorate("imageStorage", options.imageStorage ?? createImageStorage(environment));
+	if (options.queue) {
+		app.decorate("queue", options.queue);
+	}
 	app.addHook("onClose", async () => {
+		if (options.queue) {
+			await options.queue.stop();
+		}
 		await db.$client.end();
 	});
 
@@ -151,12 +168,33 @@ export function buildApp(
 		});
 	}
 	app.register(authPlugin);
+	app.register(multipart, {
+		limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 0, parts: 1 },
+	});
 	app.register(healthRoutes);
 	app.register(onboardingRoutes);
 	app.register(teamRoutes);
 	app.register(inviteRoutes);
 	app.register(projectRoutes);
 	app.register(issueRoutes);
+	app.register(issueImageRoutes);
+
+	app.register(importRoutes);
+	app.register(devAuthRoutes);
+
+	if (options.queue) {
+		const queue = options.queue;
+		app.addHook("onReady", async () => {
+			await registerImportWorker({
+				db,
+				boss: queue,
+			});
+			await registerVerifiedIssueCleanupWorker({
+				db,
+				boss: queue,
+			});
+		});
+	}
 
 	app.setNotFoundHandler((request, reply) => {
 		return reply.status(404).send({

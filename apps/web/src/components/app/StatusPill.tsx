@@ -18,6 +18,10 @@ const statusTokens: Record<IssueStatus, { label: string; cls: string }> = {
 		label: "Verified",
 		cls: "bg-[var(--pass-bg)] text-[var(--pass)]",
 	},
+	rejected: {
+		label: "Rejected",
+		cls: "bg-[var(--block-bg)] text-[var(--block)]",
+	},
 };
 
 interface StatusPillProps {
