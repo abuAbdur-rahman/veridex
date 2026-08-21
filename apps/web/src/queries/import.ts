@@ -36,7 +36,7 @@ export function useImportPreview(
 		refetchInterval: (query) => {
 			const data = query.state.data;
 			if (!data) return 1000;
-			return false;
+			return data.status === "pending" || data.status === "processing" ? 1000 : false;
 		},
 	});
 }

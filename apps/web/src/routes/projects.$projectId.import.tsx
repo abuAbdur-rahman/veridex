@@ -14,7 +14,7 @@ import {
 } from "@/queries/import";
 import { useProjectMembers } from "@/queries/projects";
 
-type ImportStep = "upload" | "progress" | "mapping" | "complete";
+type ImportStep = "upload" | "progress" | "mapping" | "importing" | "complete";
 
 export const ProjectImportRoute = createRoute({
 	getParentRoute: () => rootRoute,
@@ -45,7 +45,7 @@ function ProjectImportView() {
 	const previewQuery = useImportPreview(projectId, importJobId, step === "progress" || step === "mapping", worksheetIndex);
 	const membersQuery = useProjectMembers(projectId);
 	const confirmMutation = useConfirmImport(projectId);
-	const errorsQuery = useImportErrors(projectId, importJobId, step === "complete");
+	const errorsQuery = useImportErrors(projectId, importJobId, step === "importing" || step === "complete");
 
 	const isCsv = fileName.toLowerCase().endsWith(".csv");
 
@@ -58,6 +58,12 @@ function ProjectImportView() {
 	}, [step]);
 
 	useEffect(() => {
+		if ((step !== "progress" && step !== "mapping") || !previewQuery.isError) return;
+		setImportError(previewQuery.error instanceof Error ? previewQuery.error.message : "Import preview failed");
+		setStep("upload");
+	}, [step, previewQuery.isError, previewQuery.error]);
+
+	useEffect(() => {
 		if ((step !== "progress" && step !== "mapping") || !previewQuery.data) return;
 
 		if (previewQuery.data.status === "failed") {
@@ -65,6 +71,7 @@ function ProjectImportView() {
 			setStep("upload");
 			return;
 		}
+		if (previewQuery.data.status === "pending" || previewQuery.data.status === "processing") return;
 
 		if (previewQuery.data.selectedWorksheetIndex !== worksheetIndex) return;
 
@@ -99,8 +106,15 @@ function ProjectImportView() {
 	}, [step, previewQuery.data, worksheetIndex]);
 
 	useEffect(() => {
-		if (step !== "complete" || !errorsQuery.data) return;
+		if (step !== "importing" || !errorsQuery.data) return;
+		if (errorsQuery.data.status === "failed") {
+			setImportError(errorsQuery.data.errors?.[0]?.error ?? "Import failed");
+			setStep("mapping");
+			return;
+		}
+		if (errorsQuery.data.status !== "completed") return;
 		setImportedCount(errorsQuery.data.importedRows);
+		setStep("complete");
 	}, [step, errorsQuery.data]);
 
 	function returnToUpload() {
@@ -155,7 +169,7 @@ function ProjectImportView() {
 				worksheetIndex,
 				statusAssigneeMapping: Object.keys(statusAssigneeMapping).length > 0 ? statusAssigneeMapping : undefined,
 			});
-			setStep("complete");
+			setStep("importing");
 		} catch (err) {
 			setImportError(err instanceof Error ? err.message : "Import failed");
 		}
@@ -207,6 +221,13 @@ function ProjectImportView() {
 					onDefaultStatusChange={setDefaultStatus}
 					onCancel={returnToUpload}
 					onConfirm={confirmImport}
+				/>
+			) : step === "importing" ? (
+				<ImportProgress
+					fileName={fileName}
+					progress={errorsQuery.data?.status === "processing" ? 75 : 50}
+					stage="Importing issues..."
+					onCancel={returnToUpload}
 				/>
 			) : (
 				<ImportComplete

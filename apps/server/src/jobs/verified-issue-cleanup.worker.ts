@@ -20,8 +20,8 @@ export async function runVerifiedIssueCleanup(db: Database): Promise<void> {
 export function registerVerifiedIssueCleanupWorker(deps: {
 	db: Database;
 	boss: PgBoss;
-}): void {
-	deps.boss.work(VERIFIED_ISSUE_CLEANUP_QUEUE, async () => {
+}) {
+	return deps.boss.work(VERIFIED_ISSUE_CLEANUP_QUEUE, async () => {
 		await runVerifiedIssueCleanup(deps.db);
 	});
 }

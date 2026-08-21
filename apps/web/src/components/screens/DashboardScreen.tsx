@@ -141,7 +141,7 @@ export function DashboardScreen() {
 							type="button"
 							disabled={deleteProject.isPending}
 							onClick={handleDelete}
-							className="inline-flex min-h-10 min-w-[92px] items-center justify-center rounded-md bg-[var(--block)] px-4 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+							className="inline-flex min-h-10 min-w-[92px] items-center justify-center rounded-md border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--ink)] hover:bg-[var(--bg-alt)] disabled:opacity-50"
 						>
 							{deleteProject.isPending ? "Deleting..." : "Continue"}
 						</button>

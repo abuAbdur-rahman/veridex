@@ -146,8 +146,7 @@ async function verifyAssignmentRoles(
 				eq(projectMember.projectId, projectId),
 				inArray(projectMember.userId, assigneeIds),
 			),
-		)
-		.limit(100);
+		);
 	const rolesByUserId = new Map(members.map((member) => [member.userId, member.role]));
 
 	for (const userId of developerAssigneeIds) {
@@ -188,12 +187,12 @@ async function getAssignmentIds(
 		.from(issueAssignments)
 		.where(inArray(issueAssignments.issueId, issueIds));
 
-	for (const issueId of issueIds) {
-		result.set(issueId, { developerAssigneeIds: [], qaAssigneeIds: [] });
-	}
 	for (const row of rows) {
-		const assignments = result.get(row.issueId);
-		if (!assignments) continue;
+		let assignments = result.get(row.issueId);
+		if (!assignments) {
+			assignments = { developerAssigneeIds: [], qaAssigneeIds: [] };
+			result.set(row.issueId, assignments);
+		}
 		if (row.role === "dev") assignments.developerAssigneeIds.push(row.userId);
 		if (row.role === "qa") assignments.qaAssigneeIds.push(row.userId);
 	}
@@ -226,11 +225,13 @@ export async function createIssue(
 	);
 	if (developerAssigneeIds.length === 0 && qaAssigneeIds.length === 0) {
 		const members = await db
-			.select({ userId: projectMember.userId })
+			.select({ userId: projectMember.userId, role: projectMember.role })
 			.from(projectMember)
 			.where(eq(projectMember.projectId, projectId))
 			.limit(2);
-		if (members.length === 1) developerAssigneeIds = [members[0].userId];
+		if (members.length === 1 && members[0].role === "dev") {
+			developerAssigneeIds = [members[0].userId];
+		}
 	} else {
 		await verifyAssignmentRoles(db, projectId, developerAssigneeIds, qaAssigneeIds);
 	}
@@ -345,10 +346,24 @@ export async function listIssues(
 		conditions.push(eq(issues.status, filters.status));
 	}
 	if (filters.assigneeId) {
-		conditions.push(eq(issues.assigneeId, filters.assigneeId));
+		conditions.push(
+			sql`(${issues.assigneeId} = ${filters.assigneeId} OR EXISTS (
+				SELECT 1 FROM ${issueAssignments}
+				WHERE ${issueAssignments.issueId} = ${issues.id}
+					AND ${issueAssignments.userId} = ${filters.assigneeId}
+					AND ${issueAssignments.role} = 'dev'
+			))`,
+		);
 	}
 	if (filters.qaAssigneeId) {
-		conditions.push(eq(issues.qaAssigneeId, filters.qaAssigneeId));
+		conditions.push(
+			sql`(${issues.qaAssigneeId} = ${filters.qaAssigneeId} OR EXISTS (
+				SELECT 1 FROM ${issueAssignments}
+				WHERE ${issueAssignments.issueId} = ${issues.id}
+					AND ${issueAssignments.userId} = ${filters.qaAssigneeId}
+					AND ${issueAssignments.role} = 'qa'
+			))`,
+		);
 	}
 	if (filters.severity) {
 		conditions.push(eq(issues.severity, filters.severity));
@@ -417,31 +432,38 @@ export async function updateIssue(
 	delete (issueFields as Partial<UpdateIssueInput>).assigneeId;
 	delete (issueFields as Partial<UpdateIssueInput>).qaAssigneeId;
 
-	return db.transaction(async (tx) => {
-		const [issue] = await tx
-			.update(issues)
-			.set({
-				...issueFields,
-				...(developerAssigneeIds !== undefined || input.assigneeId !== undefined
-					? { assigneeId: nextDeveloperAssigneeIds[0] ?? null }
-					: {}),
-				...(qaAssigneeIds !== undefined || input.qaAssigneeId !== undefined
-					? { qaAssigneeId: nextQaAssigneeIds[0] ?? null }
-					: {}),
-				updatedAt: new Date(),
-			})
-			.where(and(eq(issues.id, issueId), eq(issues.projectId, projectId)))
-			.returning();
+	try {
+		return await db.transaction(async (tx) => {
+			const [issue] = await tx
+				.update(issues)
+				.set({
+					...issueFields,
+					...(developerAssigneeIds !== undefined || input.assigneeId !== undefined
+						? { assigneeId: nextDeveloperAssigneeIds[0] ?? null }
+						: {}),
+					...(qaAssigneeIds !== undefined || input.qaAssigneeId !== undefined
+						? { qaAssigneeId: nextQaAssigneeIds[0] ?? null }
+						: {}),
+					updatedAt: new Date(),
+				})
+				.where(and(eq(issues.id, issueId), eq(issues.projectId, projectId)))
+				.returning();
 
-		if (!issue) throw new NotFoundError("Issue");
-		if (assignmentsChanged) {
-			await replaceAssignments(tx, issueId, nextDeveloperAssigneeIds, nextQaAssigneeIds);
+			if (!issue) throw new NotFoundError("Issue");
+			if (assignmentsChanged) {
+				await replaceAssignments(tx, issueId, nextDeveloperAssigneeIds, nextQaAssigneeIds);
+			}
+			return withAssignments(issue, new Map([[issue.id, {
+				developerAssigneeIds: nextDeveloperAssigneeIds,
+				qaAssigneeIds: nextQaAssigneeIds,
+			}]]));
+		});
+	} catch (error) {
+		if (isUniqueConflict(error, "issues_project_title_lower_unique")) {
+			throw new AppError("DUPLICATE_ISSUE", "Duplicate issue", 409);
 		}
-		return withAssignments(issue, new Map([[issue.id, {
-			developerAssigneeIds: nextDeveloperAssigneeIds,
-			qaAssigneeIds: nextQaAssigneeIds,
-		}]]));
-	});
+		throw error;
+	}
 }
 
 export type ProjectRole = "dev" | "qa" | "tester" | "admin";

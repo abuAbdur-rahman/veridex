@@ -21,6 +21,7 @@ const COLUMNS: { title: string; status: IssueStatus; accent?: boolean }[] = [
 	{ title: "In Progress", status: "in_progress", accent: true },
 	{ title: "In QA", status: "in_qa" },
 	{ title: "Verified", status: "verified" },
+	{ title: "Rejected", status: "rejected" },
 ];
 
 function belongsToColumn(issue: Issue, status: IssueStatus) {

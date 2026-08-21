@@ -19,7 +19,8 @@ const internalImageUrlPattern = /^\/api\/projects\/[0-9a-f-]{36}\/issue-images\/
 const imageUrlSchema = z.string().trim().max(2048).refine((value) => {
 	if (internalImageUrlPattern.test(value)) return true;
 	try {
-		return new URL(value).protocol === "https:";
+		const url = new URL(value);
+		return url.protocol === "https:" && url.username === "" && url.password === "";
 	} catch {
 		return false;
 	}
