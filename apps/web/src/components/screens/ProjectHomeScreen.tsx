@@ -1,6 +1,7 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Plus, Search } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { EmptyState } from "@/components/app/EmptyState";
 import { PageHeader } from "@/components/app/PageHeader";
 import { AdminBoard } from "@/components/screens/AdminBoard";
@@ -11,6 +12,7 @@ import { ReportIssueModal, type ReportValues } from "@/components/screens/Report
 import { TesterViewScreen } from "@/components/screens/TesterViewScreen";
 import { requiresAuditNote } from "@/lib/veridex-types";
 import { mapServerHistory, mapServerIssue } from "@/lib/server-mappers";
+import { connectProjectWebSocket } from "@/lib/project-websocket";
 import { useMe } from "@/queries/session";
 import { useProject, useProjectMembers } from "@/queries/projects";
 import {
@@ -34,6 +36,7 @@ interface ProjectHomeScreenProps {
 }
 export function ProjectHomeScreen({ projectId, view, query, issueId }: ProjectHomeScreenProps) {
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 	const { data: me } = useMe();
 	const projectQuery = useProject(projectId);
 	const membersQuery = useProjectMembers(projectId);
@@ -52,6 +55,13 @@ export function ProjectHomeScreen({ projectId, view, query, issueId }: ProjectHo
 	const [reportOpen, setReportOpen] = useState(false);
 	const [reportError, setReportError] = useState("");
 	const [pageError, setPageError] = useState("");
+	useEffect(
+		() =>
+			connectProjectWebSocket(projectId, queryClient, () => {
+				void navigate({ to: "/login", search: { redirect: window.location.pathname } });
+			}),
+		[projectId, queryClient, navigate],
+	);
 	const user = me?.user;
 	const role: ProjectRole =
 		membersQuery.data?.find((member) => member.id === user?.id)?.role ?? "tester";

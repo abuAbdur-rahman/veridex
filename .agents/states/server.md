@@ -1,10 +1,26 @@
 # Server State
 
-Last updated: 2026-08-20
+Last updated: 2026-08-21
 
 ## Current Boundary
 
-The backend foundation, onboarding, teams/invites, projects/membership, issues/status-history, and spreadsheet import vertical slices are implemented in `apps/server/`. WebSockets, API tokens, and MCP tools are not implemented yet.
+The backend foundation, onboarding, teams/invites, projects/membership, issues/status-history, spreadsheet import, realtime WebSocket, and API-token REST vertical slices are implemented in `apps/server/`. MCP transport and tools remain unimplemented.
+
+## Implemented API Token Slice
+
+The authenticated REST lifecycle is registered in `apps/server/src/app.ts` and implemented by:
+
+- `apps/server/src/routes/api-tokens.ts`
+- `apps/server/src/services/api-token.service.ts`
+- `apps/server/src/routes/api-tokens.test.ts`
+- `apps/server/src/services/api-token.service.test.ts`
+
+1. `GET /api/tokens` lists only the current user's token metadata.
+2. `POST /api/tokens` validates `{ name }`, generates `vrx_${randomBytes(24).toString("base64url")}`, persists only its SHA-256 hash and first 12-character prefix, and returns the plaintext token once with `201`.
+3. `DELETE /api/tokens/:id` validates the UUID, enforces user ownership, and soft-revokes the token with `204`.
+4. Focused tests cover session enforcement, validation, one-time token return, hash-only persistence, ownership, and soft revocation.
+
+This slice does not add the MCP SDK, bearer-token authentication, MCP tools, access-summary/activity endpoints, or multi-instance WebSocket transport.
 
 The active implementation plan is sourced from:
 
@@ -169,6 +185,24 @@ Queue:
 - `import-insert` worker: reads pre-parsed rows from `import_jobs.parsedRows` (stored as JSONB during upload), selects one worksheet (or first sheet for legacy row arrays), applies column mapping, routes assignees by final issue status, and per-row wraps ticket-number increment + issue insert + status-history insert in one DB transaction. Row status precedence: mapped Status column value → row-color hex lookup in the confirmed `colorMapping` → `normalizeImportStatus(defaultStatus)` → `backlog`. `assigneeId`/`qaAssigneeId` columns are mapped via the user-chosen column mapping (not auto-detected); mapped IDs are validated against project membership and roles. On any unhandled failure the job is marked `failed` with the error in `errorLog`.
 - Worker registration via `registerImportWorker()` is wired into `buildApp()` after route registration, using the queue passed from `server.ts`. No R2 dependency — files are parsed and discarded during upload.
 
+## Implemented Realtime WebSocket Slice
+
+Registered in `apps/server/src/app.ts` via `websocketPlugin` (registered immediately after `authPlugin` so the auth/db decorators exist before the WS route is set up), and implemented by:
+
+- `apps/server/src/plugins/websocket.ts`
+- `apps/server/src/ws/handler.ts`
+- `apps/server/src/ws/broadcaster.ts`
+
+Behavior:
+
+- `GET /ws?projectId=...` upgrades to a WebSocket (`@fastify/websocket`, `websocket: true`).
+- The client passes `projectId` as a query parameter. Missing `projectId` closes the socket with code `4000` (`"projectId required"`).
+- The handler re-checks the session via `request.server.auth.api.getSession` on connect; an invalid session closes with code `4001` (`"Session expired"`). Membership is checked against `project_member` for any role; non-members close with code `4003` (`"Not a project member"`).
+- On a `ping` message the handler re-checks the session; if expired it sends `{ type: "auth:expired" }` then closes `4001`, otherwise it replies `{ type: "pong" }`.
+- `broadcaster.ts` keeps an in-memory `Map<projectId, Set<WebSocket>>` (single-instance only). `joinRoom`/`leaveRoom` manage membership; `leaveRoom` drops empty room sets. `broadcast(projectId, event)` stringifies the event once and sends only to `OPEN` sockets, dropping broken sockets via try/catch. Multi-instance deployments must replace this with Postgres `LISTEN`/`NOTIFY` through pg-boss.
+- Events emitted (discriminated union `WsEvent`): `issue:created`, `issue:updated`, `issue:status_changed` (carries `source: 'web' | 'mcp' | 'import'`), `issue:assigned`, `issue:deleted`.
+- Broadcasts are wired at call sites (not inside services) and only after the DB transaction commits: all five issue mutations in `src/routes/issues.ts` and per-row `issue:created` in `src/jobs/import.worker.ts`. This keeps the services DB-pure and keeps the broadcast-after-commit ordering required by the spec.
+
 ## Database State
 
 - Migration `0012` adds a project-scoped, case-insensitive unique index `issues_project_title_lower_unique` on `issues(project_id, lower(title))` to enforce duplicate-title rejection (matches the runtime case-insensitive duplicate check in normal creation and import). The generated SQL has been reviewed; apply it with `pnpm db:migrate` in each environment. Note: existing data with case-only duplicate titles would block this migration; dedupe first if it occurs.
@@ -196,7 +230,7 @@ pnpm db:migrate
 
 Latest results:
 
-- Vitest: 20 files, 276 tests passed (import worksheet selection, status-assignee mapping, multi-sheet parsing, status normalization, cross-project status-history rejection, sole-member auto-assignment, mapped-QA precedence, invalid-role mapping rejection, uppercase extension acceptance, queue-failure consistency).
+- Vitest: 22 files, 282 tests passed (import worksheet selection, status-assignee mapping, multi-sheet parsing, status normalization, cross-project status-history rejection, sole-member auto-assignment, mapped-QA precedence, invalid-role mapping rejection, uppercase extension acceptance, queue-failure consistency, WebSocket room join/leave/broadcast, and session/membership close-code handling).
 - Typecheck: passed.
 - Build: passed.
 
@@ -220,6 +254,8 @@ Focused tests:
 - `apps/server/src/config.test.ts`
 - `apps/server/src/app.test.ts`
 - `apps/server/src/auth/index.test.ts`
+- `apps/server/src/ws/broadcaster.test.ts`
+- `apps/server/src/ws/handler.test.ts`
 
 Rollback and concurrency behavior currently use a stateful transaction double. Add a dedicated real-PostgreSQL integration-test harness before relying on these tests as full transaction/concurrency proof.
 
@@ -236,8 +272,10 @@ Completed task:
 - Import hardening pass (review findings fixed): `fastify.queue` now decorated in `buildApp` (upload/confirm no longer 500 at runtime); color mapping re-keyed to hex end-to-end and actually applied in `import-insert`; errors endpoint returns job `status` so the web complete screen polls until insertion finishes; full header list persisted so unmapped columns can be mapped instead of silently dropped; both workers mark jobs `failed` instead of getting stuck; per-row DB transaction for ticket increment + issue + status-history inserts; `ImportUpload` surfaces upload/preview failures.
 - Import Option D refactor: parsed rows persisted as JSONB on `import_jobs.parsed_rows` during synchronous upload parse; R2 storage eliminated for imports; `import-parse` worker removed; `import-insert` worker reads from DB instead of re-downloading file; `getPreview` now returns actual sampleRows from stored data; `fileDownloader` dependency removed from worker registration.
 - Import worksheet selection and status-assignee mapping: XLSX stores versioned `{version:2, worksheets}` with worksheet metadata; `parseExcelFileForImport` returns all worksheets; preview accepts `worksheetIndex` query param and returns worksheet list; confirm accepts `worksheetIndex` + `statusAssigneeMapping`; worker selects one worksheet, routes assignees by final status (`backlog/in_progress/rejected`→`assigneeId`, `in_qa/verified`→`qaAssigneeId`), auto-maps `assigneeId`/`qaAssigneeId` columns; `normalizeImportStatus` maps `pending` to `in_progress` at user-facing boundaries; status-assignee IDs validated against project membership. 276 tests pass.
+- Realtime WebSocket slice: `@fastify/websocket` plugin registered after auth in `app.ts`; `GET /ws?projectId=` handler validates session + project membership and uses close codes `4000`/`4001`/`4003`; `ping`→`pong`/`auth:expired` re-checks session; in-memory per-project room broadcaster emits `issue:created|updated|status_changed|assigned|deleted` from issue route call sites and the import worker, all after transaction commit. WebSocket realtime tests added (broadcaster + handler). 282 tests pass.
+- API-token REST slice: `GET/POST /api/tokens` and `DELETE /api/tokens/:id` require a Better Auth session; creation returns plaintext once, stores only SHA-256 plus prefix, and revocation is ownership-scoped and soft. Focused route/service tests cover validation and security invariants. Full suite has 296 passing tests; typecheck and build pass.
 - Import hardening and sole-member pass (review findings fixed): `getIssueStatusHistory` is project-scoped (no cross-project history reads); import duplicate-title detection is case-insensitive and backed by migration `0012`'s unique expression index; imported issues persist `importJobId`; row-mapped developer/QA IDs and status-mapping IDs are role-validated against project membership; `mappedQaAssigneeId` now takes precedence for `in_qa` rows; `confirmImport` publishes the queue payload before persisting the mapping so enqueue failure leaves job state untouched; upload accepts uppercase `.CSV`/`.XLSX` extensions; new issues created in a single-member project auto-assign the sole member (web creation and imports), while explicit assignments in multi-member projects remain role-validated.
 
 ## Next Recommended Slice
 
-Implement WebSocket project rooms and post-commit issue broadcasts, or API tokens and MCP tools. Keep authorization scoped to team/project membership, validate all route input with Zod, pass `source: 'web' | 'mcp' | 'import'` at every status-changing call site, and broadcast WebSocket events only after transactions commit.
+Implement MCP bearer authentication and the six scoped issue tools. Keep authorization scoped to team/project membership, validate all route input with Zod, pass `source: 'web' | 'mcp' | 'import'` at every status-changing call site, and broadcast WebSocket events only after transactions commit. Note: the WebSocket broadcaster is single-instance (in-memory `Map`); replace with Postgres `LISTEN`/`NOTIFY` via pg-boss before running more than one server instance.

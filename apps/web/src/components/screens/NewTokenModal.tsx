@@ -13,11 +13,19 @@ interface NewTokenModalProps {
 	open: boolean;
 	rawToken: string | null;
 	config: string | null;
-	onCreate: (name: string) => string | null;
+	pending: boolean;
+	onCreate: (name: string) => Promise<string | null>;
 	onClose: () => void;
 }
 
-export function NewTokenModal({ open, rawToken, config, onCreate, onClose }: NewTokenModalProps) {
+export function NewTokenModal({
+	open,
+	rawToken,
+	config,
+	pending,
+	onCreate,
+	onClose,
+}: NewTokenModalProps) {
 	const [name, setName] = useState("");
 	const [error, setError] = useState("");
 	const [copied, setCopied] = useState(false);
@@ -44,7 +52,7 @@ export function NewTokenModal({ open, rawToken, config, onCreate, onClose }: New
 		<Dialog
 			open={open}
 			onOpenChange={(nextOpen) => {
-				if (!nextOpen) close();
+				if (!nextOpen && !pending) close();
 			}}
 		>
 			<DialogContent className="w-full max-w-[440px] gap-0 overflow-hidden rounded-[12px] border border-[var(--line)] bg-[var(--surface)] p-0 text-[var(--ink)] shadow-[0_24px_60px_rgba(0,0,0,0.4)] sm:max-w-[440px]">
@@ -121,9 +129,9 @@ export function NewTokenModal({ open, rawToken, config, onCreate, onClose }: New
 				) : (
 					<form
 						className="flex flex-col gap-5 p-6"
-						onSubmit={(event) => {
+						onSubmit={async (event) => {
 							event.preventDefault();
-							const message = onCreate(name);
+							const message = await onCreate(name);
 							setError(message ?? "");
 						}}
 					>
@@ -133,7 +141,11 @@ export function NewTokenModal({ open, rawToken, config, onCreate, onClose }: New
 								autoFocus
 								required
 								value={name}
-								onChange={(event) => setName(event.target.value)}
+								onChange={(event) => {
+									setName(event.target.value);
+									setError("");
+								}}
+								disabled={pending}
 								placeholder="Claude Code - laptop"
 								className="w-full rounded-lg border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-ring)]"
 							/>
@@ -142,15 +154,18 @@ export function NewTokenModal({ open, rawToken, config, onCreate, onClose }: New
 							<button
 								type="button"
 								onClick={close}
+								disabled={pending}
 								className="inline-flex min-h-10 cursor-pointer items-center rounded-lg border border-[var(--line)] bg-[var(--bg)] px-4 text-sm font-semibold text-[var(--ink)] hover:bg-[var(--bg-alt)]"
 							>
 								Cancel
 							</button>
 							<button
 								type="submit"
-								className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-lg bg-[var(--accent)] px-4 text-sm font-semibold text-white hover:bg-[var(--accent-strong)]"
+								disabled={pending}
+								className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-lg bg-[var(--accent)] px-4 text-sm font-semibold text-white hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-60"
 							>
-								<Check className="size-4" aria-hidden="true" /> Generate
+								<Check className="size-4" aria-hidden="true" />
+								{pending ? "Generating..." : "Generate"}
 							</button>
 						</div>
 					</form>
