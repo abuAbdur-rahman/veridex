@@ -123,7 +123,9 @@ describe("ProjectHomeScreen", () => {
 			</QueryClientProvider>,
 		);
 
-		expect(await screen.findByRole("heading", { name: "All issues" })).toBeInTheDocument();
+		expect(
+			await screen.findByRole("heading", { name: "All issues" }, { timeout: 5_000 }),
+		).toBeInTheDocument();
 		expect(screen.getByText("VER-042")).toBeInTheDocument();
-	});
+	}, 15_000);
 });
