@@ -6,9 +6,16 @@ import {
 	jsonb,
 	timestamp,
 	unique,
+	uniqueIndex,
 	index,
+	primaryKey,
 } from "drizzle-orm/pg-core";
-import { issueSeverityEnum, issueStatusEnum, changeSourceEnum } from "./enums.js";
+import {
+	issueAssignmentRoleEnum,
+	issueSeverityEnum,
+	issueStatusEnum,
+	changeSourceEnum,
+} from "./enums.js";
 import { project } from "./project.js";
 import { testCases } from "./test-cases.js";
 import { importJobs } from "./imports.js";
@@ -26,6 +33,7 @@ export const issues = pgTable(
 		stepsToReproduce: text("steps_to_reproduce"),
 		expectedResult: text("expected_result"),
 		actualResult: text("actual_result"),
+		imageUrl: text("image_url"),
 		projectId: uuid("project_id")
 			.notNull()
 			.references(() => project.id, { onDelete: "cascade" }),
@@ -48,6 +56,10 @@ export const issues = pgTable(
 		projectTicketRefUnique: unique("issues_project_ticket_ref_unique").on(
 			table.projectId,
 			table.ticketRef,
+		),
+		projectTitleLowerUnique: uniqueIndex("issues_project_title_lower_unique").on(
+			table.projectId,
+			sql`lower(${table.title})`,
 		),
 	}),
 );
@@ -74,5 +86,24 @@ export const issueStatusHistory = pgTable(
 		mcpActivityIdx: index("issue_status_history_mcp_activity_idx")
 			.on(table.changedBy, table.changedAt.desc())
 			.where(sql`${table.source} = 'mcp'`),
+	}),
+);
+
+export const issueAssignments = pgTable(
+	"issue_assignments",
+	{
+		issueId: uuid("issue_id")
+			.notNull()
+			.references(() => issues.id, { onDelete: "cascade" }),
+		userId: text("user_id").notNull(), // FK -> auth.user.id (app-level only)
+		role: issueAssignmentRoleEnum("role").notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+	},
+	(table) => ({
+		pk: primaryKey({ columns: [table.issueId, table.userId, table.role] }),
+		userRoleIdx: index("issue_assignments_user_role_idx").on(
+			table.userId,
+			table.role,
+		),
 	}),
 );

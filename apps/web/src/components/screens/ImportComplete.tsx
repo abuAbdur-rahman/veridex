@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { CheckCircle2, XCircle } from "lucide-react";
 import type { ImportErrorRow } from "@/lib/veridex-types";
-import { importErrors } from "@/lib/veridex-fixtures";
 
 interface ImportCompleteProps {
 	importedCount: number;
@@ -14,7 +13,7 @@ interface ImportCompleteProps {
 export function ImportComplete({
 	importedCount,
 	failedCount,
-	errors = importErrors,
+	errors = [],
 	onViewBoard,
 	onRestart,
 }: ImportCompleteProps) {

@@ -1,10 +1,10 @@
 # Server State
 
-Last updated: 2026-08-17
+Last updated: 2026-08-20
 
 ## Current Boundary
 
-The backend foundation, onboarding, teams/invites, projects/membership, and issues/status-history vertical slices are implemented in `apps/server/`. WebSockets, spreadsheet import, API tokens, and MCP tools are not implemented yet.
+The backend foundation, onboarding, teams/invites, projects/membership, issues/status-history, and spreadsheet import vertical slices are implemented in `apps/server/`. WebSockets, API tokens, and MCP tools are not implemented yet.
 
 The active implementation plan is sourced from:
 
@@ -13,7 +13,8 @@ The active implementation plan is sourced from:
 3. `.agents/veridex-db-schema.md`
 4. `.agents/veridex-app-flow.md`
 
-## Implemented Foundation
+- A development-only local test-user session is available when `DEV_AUTH_ENABLED=true`, `NODE_ENV=development`, and `HOST` is loopback. `POST /api/dev/test-session` creates or signs in `dev-user@localhost.test`, provisions onboarding if needed, and sets a normal Better Auth cookie. The route plugin repeats the loopback guard so direct `buildApp()` callers cannot expose it accidentally; production configuration rejects the flag.
+
 
 - Fastify application factory and server entry point, with configurable `trustProxy`.
 - Zod-validated environment contract (`TRUST_PROXY`, PostgreSQL-only database URLs, trimmed `R2_BUCKET_NAME`, OAuth pairing checks). `PUBLIC_MCP_URL` remains planned configuration until MCP tools are implemented.
@@ -22,7 +23,7 @@ The active implementation plan is sourced from:
 - Better Auth Drizzle adapter with optional Google/GitHub providers and `useSecureCookies` in production only.
 - Session, team-role, and project-role authorization helpers; role helpers validate resource IDs as UUIDs before querying.
 - Drizzle schema for all planned auth and public tables.
-- Migrations `0000` through `0007`.
+- Migrations through the current generated migration set; review `src/db/migrations/` after schema changes.
 - `GET /health`.
 - `GET /api/me` returns a session projection (`{ id, expiresAt, userId }`); the raw auth token is never exposed.
 
@@ -125,11 +126,58 @@ Routes:
 
 Issue list filtering supports status, developer assignee, QA assignee, severity, search, limit, and offset. Status transitions enforce the four-state lifecycle, reject unchanged/invalid transitions, require notes for backward transitions, and write issue status plus history atomically with `source: "web"`. Assignment targets must be project members. Admin role is required for deletion; QA or admin is required for the dedicated assignment endpoint.
 
+### Implemented Issue Images Slice
+
+Registered in `apps/server/src/app.ts` and implemented by:
+
+- `apps/server/src/routes/issue-images.ts`
+- `apps/server/src/lib/r2.ts`
+
+Routes:
+
+- `POST /api/projects/:projectId/issue-images` requires any project role, accepts a single multipart file (`image`) up to 5 MB, restricts to PNG/JPEG/WebP by both declared MIME and verified magic bytes, and returns the same-origin relative path `/api/projects/:projectId/issue-images/{key}` for storage under `projects/{projectId}/issue-images/{uuid}.{ext}` in Cloudflare R2.
+- `GET /api/projects/:projectId/issue-images/:key` requires any project role and streams the private object bytes and content type from R2. Membership is rechecked on every read.
+
+The Zod validators on issue `POST`/`PATCH` accept either an `https:` URL or the generated internal image path. R2 credentials are all-or-none; when absent, upload returns `503 IMAGE_STORAGE_UNAVAILABLE` so the API still boots in local/test environments without secrets.
+
+## Implemented Spreadsheet Import Slice
+
+Registered in `apps/server/src/app.ts` and implemented by:
+
+- `apps/server/src/routes/import.ts`
+- `apps/server/src/services/import.service.ts`
+- `apps/server/src/jobs/queue.ts`
+- `apps/server/src/jobs/import.worker.ts`
+
+Routes:
+
+- `POST /api/projects/:projectId/import/upload` requires qa or admin role, accepts multipart `.xlsx` or `.csv` file, parses synchronously in-memory, stores parsed rows as JSONB on `import_jobs`, returns `completed` immediately. XLSX stores versioned `{version:2, worksheets}` object; CSV stores legacy row array.
+- `GET /api/projects/:projectId/import/:importJobId/preview` requires qa or admin, returns parsed headers, sample rows (first 5 from selected worksheet), auto-mapped columns, hex-keyed color mappings, worksheet metadata (`worksheets`, `selectedWorksheetIndex`), project members, and the job `status` plus an `error` message when parsing failed. Accepts optional nonnegative `worksheetIndex` query param.
+- `PATCH /api/projects/:projectId/import/:importJobId/confirm` requires qa or admin, accepts `columnMapping`, optional `colorMapping`, optional `defaultStatus` (accepts `pending` as alias for `in_progress`), optional nonnegative `worksheetIndex`, and optional `statusAssigneeMapping` keyed by canonical status, publishes `import-insert` pg-boss job. Status-assignee IDs validated against project membership before queueing.
+- `GET /api/projects/:projectId/import/:importJobId/errors` requires qa or admin, returns imported/failed row counts, per-row error details, and the job `status`.
+
+Status-assignee routing rules:
+
+- `backlog`, `in_progress`, `rejected` → `issues.assigneeId`
+- `in_qa`, `verified` → `issues.qaAssigneeId`
+- Explicit status-to-member mapping overrides row-column assignee values.
+- `pending` is accepted at import/user-facing boundaries and normalized to `in_progress` via `normalizeImportStatus()`.
+
+Queue:
+
+- pg-boss runs on `DATABASE_URL_UNPOOLED`, created in `server.ts` with the `import-insert` queue provisioned before worker registration, and passed to `buildApp`, which now also `app.decorate("queue", …)` so import routes can publish without a raw instance reference.
+- `import-insert` worker: reads pre-parsed rows from `import_jobs.parsedRows` (stored as JSONB during upload), selects one worksheet (or first sheet for legacy row arrays), applies column mapping, routes assignees by final issue status, and per-row wraps ticket-number increment + issue insert + status-history insert in one DB transaction. Row status precedence: mapped Status column value → row-color hex lookup in the confirmed `colorMapping` → `normalizeImportStatus(defaultStatus)` → `backlog`. `assigneeId`/`qaAssigneeId` columns are mapped via the user-chosen column mapping (not auto-detected); mapped IDs are validated against project membership and roles. On any unhandled failure the job is marked `failed` with the error in `errorLog`.
+- Worker registration via `registerImportWorker()` is wired into `buildApp()` after route registration, using the queue passed from `server.ts`. No R2 dependency — files are parsed and discarded during upload.
+
 ## Database State
 
-- Migration `0007` adds query-driven indexes `idx_project_team` (`project(team_id)`) and `idx_project_member_project` (`project_member(project_id)`). The generated SQL has been reviewed; apply it with `pnpm db:migrate` in each environment.
-- Migration `0006` replaces plaintext invite-token storage with unique `token_hash` and safe `token_prefix` columns. The generated SQL has been reviewed; apply it with `pnpm db:migrate` in each environment.
-- Migration `0005` removes `'closed'` from the `issue_status` enum, matching the product lifecycle `backlog <-> in_progress <-> in_qa <-> verified`. The `issues.closed_at` column remains per the spec.
+- Migration `0012` adds a project-scoped, case-insensitive unique index `issues_project_title_lower_unique` on `issues(project_id, lower(title))` to enforce duplicate-title rejection (matches the runtime case-insensitive duplicate check in normal creation and import). The generated SQL has been reviewed; apply it with `pnpm db:migrate` in each environment. Note: existing data with case-only duplicate titles would block this migration; dedupe first if it occurs.
+- Migration `0010` adds nullable `import_jobs.parsed_rows jsonb` for persisting parsed spreadsheet rows during upload (Option D — eliminates R2 storage for imports). The generated SQL has been reviewed; apply it with `pnpm db:migrate` in each environment.
+- Migration `0009` adds `'rejected'` to the `issue_status` enum.
+- Migration `0008` adds nullable `issues.image_url text` to persist either a validated external URL or the project-scoped internal image path.
+- Migration `0007` adds query-driven indexes `idx_project_team` (`project(team_id)`) and `idx_project_member_project` (`project_member(project_id)`).
+- Migration `0006` replaces plaintext invite-token storage with unique `token_hash` and safe `token_prefix` columns.
+- Migration `0005` removes `'closed'` from the `issue_status` enum.
 - `auth.user`, `team`, `team_member`, `project`, and `project_member` exist.
 - `user_username_unique`, `user_default_role_check`, `team_slug_unique`, and `project_team_slug_unique` exist.
 - Query-driven indexes from the repair migrations exist.
@@ -148,10 +196,9 @@ pnpm db:migrate
 
 Latest results:
 
-- Vitest: 15 files, 188 tests passed.
+- Vitest: 20 files, 276 tests passed (import worksheet selection, status-assignee mapping, multi-sheet parsing, status normalization, cross-project status-history rejection, sole-member auto-assignment, mapped-QA precedence, invalid-role mapping rejection, uppercase extension acceptance, queue-failure consistency).
 - Typecheck: passed.
 - Build: passed.
-- `pnpm db:generate`: no schema changes after migration `0007`.
 
 Focused tests:
 
@@ -164,6 +211,10 @@ Focused tests:
 - `apps/server/src/routes/projects.test.ts`
 - `apps/server/src/services/project.service.test.ts`
 - `apps/server/src/routes/issues.test.ts`
+- `apps/server/src/routes/issue-images.test.ts`
+- `apps/server/src/routes/import.test.ts`
+- `apps/server/src/jobs/import.worker.test.ts`
+- `apps/server/src/services/import.service.test.ts`
 - `apps/server/src/services/issue.service.test.ts`
 - `apps/server/src/lib/auth.test.ts`
 - `apps/server/src/config.test.ts`
@@ -181,7 +232,12 @@ Completed task:
 - Teams and invites vertical slice: six team/invite routes, shared team-role authorization, hashed one-time invite tokens, atomic team creation and invite acceptance, and focused route/service tests.
 - Projects and membership vertical slice (migration `0007`, seven project routes, project service, creator-protection and team-membership rules, and focused route/service tests).
 - Issues and status-history vertical slice (eight issue routes, list filters, create/detail/edit/status/assignment/history/delete services, atomic status history, and focused route/service tests).
+- Spreadsheet import vertical slice (pg-boss queue on unpooled connection, ExcelJS/CSV parser worker with color-to-status resolution, upload/preview/confirm/errors routes, import service with R2 storage, worker registration in app startup, and focused route/worker/service tests). Frontend wiring complete (api/import.ts, queries/import.ts, route rewrite, ImportMapping/Progress/Complete updates).
+- Import hardening pass (review findings fixed): `fastify.queue` now decorated in `buildApp` (upload/confirm no longer 500 at runtime); color mapping re-keyed to hex end-to-end and actually applied in `import-insert`; errors endpoint returns job `status` so the web complete screen polls until insertion finishes; full header list persisted so unmapped columns can be mapped instead of silently dropped; both workers mark jobs `failed` instead of getting stuck; per-row DB transaction for ticket increment + issue + status-history inserts; `ImportUpload` surfaces upload/preview failures.
+- Import Option D refactor: parsed rows persisted as JSONB on `import_jobs.parsed_rows` during synchronous upload parse; R2 storage eliminated for imports; `import-parse` worker removed; `import-insert` worker reads from DB instead of re-downloading file; `getPreview` now returns actual sampleRows from stored data; `fileDownloader` dependency removed from worker registration.
+- Import worksheet selection and status-assignee mapping: XLSX stores versioned `{version:2, worksheets}` with worksheet metadata; `parseExcelFileForImport` returns all worksheets; preview accepts `worksheetIndex` query param and returns worksheet list; confirm accepts `worksheetIndex` + `statusAssigneeMapping`; worker selects one worksheet, routes assignees by final status (`backlog/in_progress/rejected`→`assigneeId`, `in_qa/verified`→`qaAssigneeId`), auto-maps `assigneeId`/`qaAssigneeId` columns; `normalizeImportStatus` maps `pending` to `in_progress` at user-facing boundaries; status-assignee IDs validated against project membership. 276 tests pass.
+- Import hardening and sole-member pass (review findings fixed): `getIssueStatusHistory` is project-scoped (no cross-project history reads); import duplicate-title detection is case-insensitive and backed by migration `0012`'s unique expression index; imported issues persist `importJobId`; row-mapped developer/QA IDs and status-mapping IDs are role-validated against project membership; `mappedQaAssigneeId` now takes precedence for `in_qa` rows; `confirmImport` publishes the queue payload before persisting the mapping so enqueue failure leaves job state untouched; upload accepts uppercase `.CSV`/`.XLSX` extensions; new issues created in a single-member project auto-assign the sole member (web creation and imports), while explicit assignments in multi-member projects remain role-validated.
 
 ## Next Recommended Slice
 
-Implement WebSocket project rooms and post-commit issue broadcasts, or spreadsheet import parsing/jobs, while reusing the established project authorization and issue service boundaries. Keep authorization scoped to team/project membership, validate all route input with Zod, pass `source: 'web' | 'mcp' | 'import'` at every status-changing call site, and broadcast WebSocket events only after transactions commit.
+Implement WebSocket project rooms and post-commit issue broadcasts, or API tokens and MCP tools. Keep authorization scoped to team/project membership, validate all route input with Zod, pass `source: 'web' | 'mcp' | 'import'` at every status-changing call site, and broadcast WebSocket events only after transactions commit.

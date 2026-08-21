@@ -20,10 +20,13 @@ const issue = {
 	stepsToReproduce: null,
 	expectedResult: null,
 	actualResult: null,
+	imageUrl: null,
 	projectId: "p1",
 	reporterId: "u1",
 	assigneeId: null,
 	qaAssigneeId: null,
+	developerAssigneeIds: [],
+	qaAssigneeIds: [],
 	testCaseId: null,
 	importJobId: null,
 	createdAt: "2026-01-01T00:00:00Z",
@@ -68,7 +71,7 @@ describe("issues API", () => {
 			environment: { browser: "Chrome" },
 		});
 		await updateIssueStatus("p1", "i1", "in_progress", "Starting work");
-		await assignIssue("p1", "i1", { assigneeId: "u2", qaAssigneeId: null });
+		await assignIssue("p1", "i1", { developerAssigneeIds: ["u2"], qaAssigneeIds: [] });
 		await expect(getIssueHistory("p1", "i1")).resolves.toEqual([history]);
 		await expect(deleteIssue("p1", "i1")).resolves.toBeNull();
 		expect(fetchMock).toHaveBeenNthCalledWith(
@@ -81,7 +84,7 @@ describe("issues API", () => {
 		expect(fetchMock).toHaveBeenNthCalledWith(
 			3,
 			"/api/projects/p1/issues/i1/assign",
-			expect.objectContaining({ body: JSON.stringify({ assigneeId: "u2", qaAssigneeId: null }) }),
+			expect.objectContaining({ body: JSON.stringify({ developerAssigneeIds: ["u2"], qaAssigneeIds: [] }) }),
 		);
 	});
 	it("rejects malformed issue history", async () => {

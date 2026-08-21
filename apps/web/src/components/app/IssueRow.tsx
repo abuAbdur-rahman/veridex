@@ -38,15 +38,24 @@ export function IssueRow({ issue, trailing, onClick }: IssueRowProps) {
 				<StatusPill status={issue.status} />
 			</td>
 			<td className="hidden px-3 py-3 lg:table-cell">
-				{issue.assignee ? (
+				{issue.developerAssignees.length > 0 ? (
 					<div className="flex items-center gap-2">
-						<Avatar
-							initials={issue.assignee.initials}
-							gradient={issue.assignee.gradient}
-							name={issue.assignee.name}
-							className="size-5 text-[9px]"
-						/>
-						<span className="text-xs text-[var(--ink-soft)]">{issue.assignee.name}</span>
+						<div className="flex -space-x-1.5">
+							{issue.developerAssignees.slice(0, 3).map((assignee) => (
+								<Avatar
+									key={assignee.id ?? assignee.name}
+									initials={assignee.initials}
+									gradient={assignee.gradient}
+									name={assignee.name}
+									className="size-5 text-[9px] ring-2 ring-[var(--surface)]"
+								/>
+							))}
+						</div>
+						<span className="text-xs text-[var(--ink-soft)]">
+							{issue.developerAssignees.length === 1
+								? issue.developerAssignees[0].name
+								: `${issue.developerAssignees[0].name} +${issue.developerAssignees.length - 1}`}
+						</span>
 					</div>
 				) : (
 					<span className="text-xs text-[var(--ink-soft)]">Unassigned</span>

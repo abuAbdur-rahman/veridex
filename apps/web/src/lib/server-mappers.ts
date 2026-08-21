@@ -46,11 +46,16 @@ export function mapServerIssue(
 		status: value.status,
 		severity: value.severity,
 		description: value.description ?? undefined,
+		imageUrl: value.imageUrl ?? undefined,
 		environment: environment(value.environment),
 		stepsToReproduce: value.stepsToReproduce?.split("\n").filter(Boolean),
 		reporter: person(value.reporterId, user, members)!,
-		assignee: person(value.assigneeId, user, members),
-		qaOwner: person(value.qaAssigneeId, user, members),
+		developerAssignees: (value.developerAssigneeIds ?? [])
+			.map((id) => person(id, user, members))
+			.filter((p): p is IssueAssignee => Boolean(p)),
+		qaAssignees: (value.qaAssigneeIds ?? [])
+			.map((id) => person(id, user, members))
+			.filter((p): p is IssueAssignee => Boolean(p)),
 		createdAt: value.createdAt ?? new Date(0).toISOString(),
 		updatedAt: value.updatedAt ?? new Date(0).toISOString(),
 	};

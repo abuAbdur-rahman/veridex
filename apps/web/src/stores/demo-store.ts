@@ -37,7 +37,7 @@ import type {
 } from "@/lib/veridex-types";
 
 export const DEMO_STORE_KEY = "veridex-demo-store";
-export const DEMO_STORE_VERSION = 1;
+export const DEMO_STORE_VERSION = 2;
 
 export type ActionResult<T> = { ok: true; value: T } | { ok: false; error: string };
 
@@ -83,8 +83,8 @@ export interface DemoStoreActions {
 				| "severity"
 				| "description"
 				| "environment"
-				| "assignee"
-				| "qaOwner"
+				| "developerAssignees"
+				| "qaAssignees"
 				| "tags"
 			>
 		>,
@@ -121,6 +121,33 @@ const defaultSettings: UserSettings = {
 
 function clone<T>(value: T): T {
 	return structuredClone(value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null;
+}
+
+function migrateDemoState(persistedState: unknown, version: number): DemoDomainState {
+	if (version !== 1 || !isRecord(persistedState) || !Array.isArray(persistedState.issues)) {
+		return persistedState as DemoDomainState;
+	}
+
+	return {
+		...persistedState,
+		issues: persistedState.issues.map((issue) => {
+			if (!isRecord(issue)) return issue;
+			const { assignee, qaOwner, ...currentIssue } = issue;
+			return {
+				...currentIssue,
+				developerAssignees: Array.isArray(issue.developerAssignees)
+					? issue.developerAssignees
+					: assignee === undefined ? [] : [assignee],
+				qaAssignees: Array.isArray(issue.qaAssignees)
+					? issue.qaAssignees
+					: qaOwner === undefined ? [] : [qaOwner],
+			};
+		}),
+	} as DemoDomainState;
 }
 
 function groupByIssue<T extends { issueId: string }>(entries: T[]): IssueMap<T> {
@@ -173,8 +200,9 @@ function initialsFor(name: string): string {
 const allowedTransitions: Record<IssueStatus, IssueStatus[]> = {
 	backlog: ["in_progress"],
 	in_progress: ["in_qa", "backlog"],
-	in_qa: ["verified", "in_progress"],
+	in_qa: ["verified", "in_progress", "rejected"],
 	verified: ["in_qa"],
+	rejected: ["backlog"],
 };
 
 export function getAllowedTransitions(status: IssueStatus): IssueStatus[] {
@@ -186,6 +214,7 @@ const statusPosition: Record<IssueStatus, number> = {
 	in_progress: 1,
 	in_qa: 2,
 	verified: 3,
+	rejected: 4,
 };
 
 export function isBackwardTransition(fromStatus: IssueStatus, toStatus: IssueStatus): boolean {
@@ -240,6 +269,8 @@ function storeCreator(
 					environment: input.environment?.trim() || undefined,
 					stepsToReproduce: input.stepsToReproduce?.map((step) => step.trim()).filter(Boolean),
 					testCaseRef: input.testCaseRef?.trim() || undefined,
+					developerAssignees: [],
+					qaAssignees: [],
 					reporter: clone(get().currentUser),
 					createdAt: timestamp,
 					updatedAt: timestamp,
@@ -505,6 +536,7 @@ function storeCreator(
 		{
 			name: DEMO_STORE_KEY,
 			version: DEMO_STORE_VERSION,
+			migrate: migrateDemoState,
 			storage: createJSONStorage(() => storage),
 			partialize: (state): DemoDomainState => ({
 				currentTeamId: state.currentTeamId,

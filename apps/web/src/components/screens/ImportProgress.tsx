@@ -2,7 +2,7 @@ import { PageHeader } from "@/components/app/PageHeader";
 
 interface ImportProgressProps {
 	fileName: string;
-	progress: number; // 0-100
+	progress: number;
 	stage?: string;
 	onCancel?: () => void;
 }
@@ -14,7 +14,7 @@ export function ImportProgress({ fileName, progress, stage, onCancel }: ImportPr
 			<PageHeader title="Import Issues" />
 			<div className="mx-auto flex max-w-[520px] flex-col gap-6 rounded-[12px] border border-[var(--line)] bg-[var(--surface)] p-8">
 				<div>
-					<p className="font-[var(--mono)] text-xs text-[var(--ink-soft)]">Demo preview</p>
+					<p className="font-[var(--mono)] text-xs text-[var(--ink-soft)]">Import preview</p>
 					<h2 className="mt-1 truncate font-[var(--mono)] text-base font-semibold text-[var(--ink)]">
 						{fileName}
 					</h2>
@@ -46,7 +46,7 @@ export function ImportProgress({ fileName, progress, stage, onCancel }: ImportPr
 						className="size-3.5 animate-spin rounded-full border-2 border-[var(--line)] border-t-[var(--accent)]"
 						aria-hidden="true"
 					/>
-					{stage ?? "Preparing demo preview..."}
+					{stage ?? "Preparing import preview..."}
 				</p>
 				<button
 					type="button"

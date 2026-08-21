@@ -1,4 +1,4 @@
-export const ISSUE_STATUSES = ["backlog", "in_progress", "in_qa", "verified"] as const;
+export const ISSUE_STATUSES = ["backlog", "in_progress", "in_qa", "verified", "rejected"] as const;
 
 export type IssueStatus = (typeof ISSUE_STATUSES)[number];
 
@@ -33,9 +33,10 @@ export interface Issue {
 	environment?: string;
 	stepsToReproduce?: string[];
 	description?: string;
+	imageUrl?: string;
 	testCaseRef?: string;
-	assignee?: IssueAssignee;
-	qaOwner?: IssueAssignee;
+	developerAssignees: IssueAssignee[];
+	qaAssignees: IssueAssignee[];
 	reporter: IssueAssignee;
 	createdAt: string;
 	updatedAt: string;

@@ -49,6 +49,36 @@ export async function getProject(db: Database, projectId: string) {
 	return rows[0] ?? null;
 }
 
+export async function updateProjectName(
+	db: Database,
+	projectId: string,
+	name: string,
+) {
+	const ref = await getProjectRef(db, projectId);
+	if (!ref) throw new NotFoundError("Project");
+
+	const [updatedProject] = await db
+		.update(project)
+		.set({ name })
+		.where(eq(project.id, projectId))
+		.returning({ id: project.id, name: project.name });
+
+	if (!updatedProject) throw new NotFoundError("Project");
+	return updatedProject;
+}
+
+export async function deleteProject(db: Database, projectId: string) {
+	const ref = await getProjectRef(db, projectId);
+	if (!ref) throw new NotFoundError("Project");
+
+	const [deletedProject] = await db
+		.delete(project)
+		.where(eq(project.id, projectId))
+		.returning({ id: project.id });
+
+	if (!deletedProject) throw new NotFoundError("Project");
+}
+
 export async function createProject(
 	db: Database,
 	teamId: string,

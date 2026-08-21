@@ -22,6 +22,7 @@ import {
 	useIssues,
 	useUpdateIssue,
 	useUpdateIssueStatus,
+	useUploadIssueImage,
 } from "@/queries/issues";
 import type { Issue, IssueStatus, ProjectRole, RoleView } from "@/lib/veridex-types";
 
@@ -43,6 +44,7 @@ export function ProjectHomeScreen({ projectId, view, query, issueId }: ProjectHo
 	const selectedQuery = useIssue(projectId, issueId ?? "");
 	const historyQuery = useIssueHistory(projectId, issueId ?? "");
 	const createMutation = useCreateIssue(projectId);
+	const uploadMutation = useUploadIssueImage(projectId);
 	const statusMutation = useUpdateIssueStatus(projectId);
 	const updateMutation = useUpdateIssue(projectId, issueId ?? "");
 	const assignMutation = useAssignIssue(projectId, issueId ?? "");
@@ -87,7 +89,12 @@ export function ProjectHomeScreen({ projectId, view, query, issueId }: ProjectHo
 	async function report(values: ReportValues) {
 		setReportError("");
 		try {
-			const created = await createMutation.mutateAsync(values);
+			const { imageFile, imageUrl: suppliedImageUrl, ...issueValues } = values;
+			const uploaded = imageFile ? await uploadMutation.mutateAsync(imageFile) : undefined;
+			const created = await createMutation.mutateAsync({
+				...issueValues,
+				imageUrl: uploaded?.imageUrl ?? suppliedImageUrl,
+			});
 			setReportOpen(false);
 			if (user) openIssue(mapServerIssue(created, user, members));
 		} catch (value) {
@@ -176,14 +183,18 @@ export function ProjectHomeScreen({ projectId, view, query, issueId }: ProjectHo
 				/>
 			) : (
 				<BoardScreen
-					issues={issues.filter((issue) => !issue.assignee || issue.assignee.id === user?.id)}
+					issues={issues.filter(
+					(issue) =>
+						issue.developerAssignees.length === 0 ||
+						issue.developerAssignees.some((assignee) => assignee.id === user?.id),
+				)}
 					onOpenIssue={openIssue}
 					onMoveIssue={(issue, status) => void moveIssue(issue, status)}
 				/>
 			)}
 			<ReportIssueModal
 				open={reportOpen}
-				pending={createMutation.isPending}
+				pending={createMutation.isPending || uploadMutation.isPending}
 				error={reportError}
 				onClose={() => {
 					setReportOpen(false);

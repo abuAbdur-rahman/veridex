@@ -52,19 +52,21 @@ A user's role is scoped per project via `project_member.role`, never global.
   │
   ├── "Continue with Google" ──▶ Google OAuth consent
   │                                    │
-  └── "Continue with GitHub" ──▶ GitHub OAuth consent
-                                       │
-                              ┌────────▼────────────┐
-                              │  Better Auth callback │
-                              │  (mounted via         │
-                              │   toNodeHandler on     │
-                              │   Fastify)             │
-                              │  · upsert user row     │
-                              │  · create account row  │
-                              │  · create session      │
-                              │  · username: null       │
-                              │    (first time)         │
-                              └────────┬───────────────┘
+  ├── "Continue with GitHub" ──▶ GitHub OAuth consent
+  │                                    │
+  └── "Continue as local test user" ──▶ POST /api/dev/test-session
+        (browser on loopback; server requires development mode,
+         DEV_AUTH_ENABLED=true, and a loopback HOST)
+                                        │
+                               ┌────────▼────────────────┐
+                               │  Better Auth session     │
+                               │  · OAuth callback, or     │
+                               │    local test endpoint   │
+                               │  · create/sign in user   │
+                               │  · create session        │
+                               │  · local endpoint also   │
+                               │    completes onboarding  │
+                               └────────┬─────────────────┘
                                        │
                               ┌────────▼──────────────────────┐
                               │  TanStack Router beforeLoad    │
@@ -453,7 +455,7 @@ An agent with a token belonging to a user who is only a member of project A cann
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/` | Landing page |
-| `GET` | `/login` | Login page (OAuth buttons only) |
+| `GET` | `/login` | Login page (OAuth plus loopback-only local test login when enabled) |
 | `GET` | `/api/auth/*` | Better Auth (mounted via toNodeHandler) |
 | `GET` | `/join/team/:token` | Team invite acceptance page |
 
@@ -475,6 +477,7 @@ An agent with a token belonging to a user who is only a member of project A cann
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
+| `POST` | `/api/dev/test-session` | none; development + flag + loopback host | Create/sign in the fixed local test user, provision onboarding, and set Better Auth cookies; route absent otherwise |
 | `GET` | `/api/me` | session | Current user + teams (cached in TanStack Query) |
 | `POST` | `/api/onboarding/complete` | session | Atomic username + team + project provisioning |
 | `GET` | `/api/users/check-username` | session | Live username availability |

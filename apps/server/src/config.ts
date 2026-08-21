@@ -71,6 +71,7 @@ const environmentSchema = z
 		DATABASE_URL_UNPOOLED: postgresUrl,
 		BETTER_AUTH_SECRET: z.string().min(16),
 		BETTER_AUTH_URL: z.string().url(),
+		DEV_AUTH_ENABLED: booleanFromEnv.default(false),
 		GOOGLE_CLIENT_ID: optionalTrimmedString,
 		GOOGLE_CLIENT_SECRET: optionalTrimmedString,
 		GITHUB_CLIENT_ID: optionalTrimmedString,
@@ -91,6 +92,36 @@ const environmentSchema = z
 				path: [environment[idKey] ? secretKey : idKey],
 				message: `${idKey} and ${secretKey} must be configured together`,
 			});
+		}
+
+		if (environment.NODE_ENV !== "development" && environment.DEV_AUTH_ENABLED) {
+			context.addIssue({
+				code: "custom",
+				path: ["DEV_AUTH_ENABLED"],
+				message: "Development authentication requires NODE_ENV=development",
+			});
+		}
+
+		if (environment.DEV_AUTH_ENABLED && !["127.0.0.1", "localhost", "::1"].includes(environment.HOST)) {
+			context.addIssue({
+				code: "custom",
+				path: ["HOST"],
+				message: "Development authentication requires a loopback HOST",
+			});
+		}
+
+		const r2Keys = ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"] as const;
+		const configuredR2Keys = r2Keys.filter((key) => Boolean(environment[key]));
+		if (configuredR2Keys.length > 0 && configuredR2Keys.length < r2Keys.length) {
+			for (const key of r2Keys) {
+				if (!environment[key]) {
+					context.addIssue({
+						code: "custom",
+						path: [key],
+						message: "R2 account ID and credentials must be configured together",
+					});
+				}
+			}
 		}
 	});
 

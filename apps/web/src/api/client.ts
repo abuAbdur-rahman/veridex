@@ -20,11 +20,12 @@ export async function apiRequest<T>(
 	validate: (value: unknown) => value is T,
 	init?: RequestInit,
 ) {
+	const hasJsonBody = init?.body !== undefined && !(init.body instanceof FormData);
 	const response = await fetch(path, {
 		credentials: "include",
 		...init,
 		headers: {
-			"Content-Type": "application/json",
+			...(hasJsonBody ? { "Content-Type": "application/json" } : {}),
 			...(init?.headers ?? {}),
 		},
 	});

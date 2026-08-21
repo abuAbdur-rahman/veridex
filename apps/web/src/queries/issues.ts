@@ -8,6 +8,7 @@ import {
 	listIssues,
 	updateIssue,
 	updateIssueStatus,
+	uploadIssueImage,
 	type CreateIssueInput,
 	type IssueFilters,
 	type UpdateIssueInput,
@@ -64,6 +65,11 @@ export function useCreateIssue(projectId: string) {
 		onSuccess: () => refresh(),
 	});
 }
+export function useUploadIssueImage(projectId: string) {
+	return useMutation({
+		mutationFn: (file: File) => uploadIssueImage(projectId, file),
+	});
+}
 export function useUpdateIssue(projectId: string, issueId: string) {
 	const refresh = useRefresh(projectId);
 	return useMutation({
@@ -94,7 +100,7 @@ export function useUpdateIssueStatus(projectId: string) {
 export function useAssignIssue(projectId: string, issueId: string) {
 	const refresh = useRefresh(projectId);
 	return useMutation({
-		mutationFn: (input: { assigneeId?: string | null; qaAssigneeId?: string | null }) =>
+		mutationFn: (input: { developerAssigneeIds: string[]; qaAssigneeIds: string[] }) =>
 			assignIssue(projectId, issueId, input),
 		onSuccess: () => refresh(issueId),
 	});

@@ -27,6 +27,7 @@ export function KanbanCard({ issue, active, onOpen, onMove, className }: KanbanC
 		id: issue.id,
 		data: { issue, status: issue.status },
 	});
+	const visibleTransitions = getAllowedTransitions(issue.status);
 	return (
 		<article
 			ref={setNodeRef}
@@ -89,14 +90,20 @@ export function KanbanCard({ issue, active, onOpen, onMove, className }: KanbanC
 					{formatRelativeTime(issue.updatedAt)}
 				</span>
 				<div className="ml-auto" />
-				{issue.assignee ? (
-					<Avatar
-						initials={issue.assignee.initials}
-						gradient={issue.assignee.gradient}
-						name={issue.assignee.name}
-					/>
+				{issue.developerAssignees.length > 0 ? (
+					<div className="flex -space-x-1.5">
+						{issue.developerAssignees.slice(0, 3).map((assignee) => (
+							<Avatar
+								key={assignee.id ?? assignee.name}
+								initials={assignee.initials}
+								gradient={assignee.gradient}
+								name={assignee.name}
+								className="ring-2 ring-[var(--surface)]"
+							/>
+						))}
+					</div>
 				) : null}
-				{onMove && getAllowedTransitions(issue.status).length > 0 ? (
+				{onMove && visibleTransitions.length > 0 ? (
 					<DropdownMenu>
 						<DropdownMenuTrigger
 							aria-label={`Move ${issue.ticketRef}`}
@@ -105,7 +112,7 @@ export function KanbanCard({ issue, active, onOpen, onMove, className }: KanbanC
 							Move <ChevronDown className="size-3" />
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end" className="min-w-40">
-							{getAllowedTransitions(issue.status).map((status) => (
+							{visibleTransitions.map((status) => (
 								<DropdownMenuItem key={status} onClick={() => onMove(status)}>
 									{status.replaceAll("_", " ")}
 								</DropdownMenuItem>

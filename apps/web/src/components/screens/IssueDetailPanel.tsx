@@ -1,8 +1,17 @@
-import { Save, Trash2 } from "lucide-react";
+import { ImageIcon, Save, Trash2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { SeverityBadge } from "@/components/app/SeverityBadge";
 import { StatusHistory } from "@/components/app/StatusHistory";
 import { StatusPill } from "@/components/app/StatusPill";
+import {
+	Dialog,
+	DialogClose,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import {
 	Sheet,
 	SheetContent,
@@ -32,7 +41,7 @@ interface IssueDetailPanelProps {
 	onClose: () => void;
 	onUpdate: (input: UpdateIssueInput) => Promise<void>;
 	onStatusChange: (status: IssueStatus, note?: string) => Promise<void>;
-	onAssign: (input: { assigneeId?: string | null; qaAssigneeId?: string | null }) => Promise<void>;
+	onAssign: (input: { developerAssigneeIds: string[]; qaAssigneeIds: string[] }) => Promise<void>;
 	onDelete: () => Promise<void>;
 }
 export function IssueDetailPanel({
@@ -49,10 +58,16 @@ export function IssueDetailPanel({
 	onDelete,
 }: IssueDetailPanelProps) {
 	const [editing, setEditing] = useState(false);
+	const [imageOpen, setImageOpen] = useState(false);
 	const [error, setError] = useState("");
 	const canEdit = role !== "tester";
 	const canAssign = role === "qa" || role === "admin";
 	const canDelete = role === "admin";
+	const developerMembers = members.filter((member) => member.role === "dev");
+	const qaMembers = members.filter((member) => member.role === "qa");
+	const visibleTransitions = getAllowedTransitions(issue.status).filter(
+		(status) => status !== "rejected" || role === "dev",
+	);
 	async function run(action: () => Promise<void>) {
 		setError("");
 		try {
@@ -100,7 +115,7 @@ export function IssueDetailPanel({
 			}}
 		>
 			<SheetContent
-				className="w-full max-w-[620px] gap-0 bg-[var(--surface)] sm:max-w-[620px]"
+				className="w-full max-w-[780px] gap-0 bg-[var(--surface)] sm:max-w-[780px]"
 				aria-label={`Issue ${issue.ticketRef}`}
 			>
 				<SheetHeader className="border-b border-[var(--line)] px-5 py-4 pr-14">
@@ -114,16 +129,28 @@ export function IssueDetailPanel({
 					<div className="flex flex-wrap items-center gap-2">
 						<StatusPill status={issue.status} />
 						<SeverityBadge severity={issue.severity} />
-						{canEdit ? (
-							<button
-								type="button"
-								disabled={pending}
-								onClick={() => setEditing((value) => !value)}
-								className="ml-auto min-h-9 rounded-md border border-[var(--line)] px-3 text-sm font-semibold hover:border-[var(--accent)] disabled:opacity-50"
-							>
-								{editing ? "Cancel edit" : "Edit"}
-							</button>
-						) : null}
+						<div className="ml-auto flex flex-wrap gap-2">
+							{issue.imageUrl ? (
+								<button
+									type="button"
+									onClick={() => setImageOpen(true)}
+									className="inline-flex min-h-9 items-center gap-2 rounded-md border border-[var(--line)] px-3 text-sm font-semibold hover:border-[var(--accent)]"
+								>
+									<ImageIcon className="size-4" />
+									View image
+								</button>
+							) : null}
+							{canEdit ? (
+								<button
+									type="button"
+									disabled={pending}
+									onClick={() => setEditing((value) => !value)}
+									className="min-h-9 rounded-md border border-[var(--line)] px-3 text-sm font-semibold hover:border-[var(--accent)] disabled:opacity-50"
+								>
+									{editing ? "Cancel edit" : "Edit"}
+								</button>
+							) : null}
+						</div>
 					</div>
 					{error ? (
 						<p
@@ -183,46 +210,50 @@ export function IssueDetailPanel({
 					) : (
 						<IssueSummary issue={issue} />
 					)}
-					{canAssign ? (
+					{canAssign && (developerMembers.length > 0 || qaMembers.length > 0) ? (
 						<section>
 							<Label>Assignment</Label>
 							<div className="mt-2 grid gap-3 sm:grid-cols-2">
-								<Assignment
-									label="Developer"
-									value={issue.assignee?.id ?? ""}
-									members={members}
-									disabled={pending}
-									onChange={(assigneeId) =>
-										void run(() =>
-											onAssign({
-												assigneeId: assigneeId || null,
-												qaAssigneeId: issue.qaOwner?.id ?? null,
-											}),
-										).catch(() => undefined)
-									}
-								/>
-								<Assignment
-									label="QA owner"
-									value={issue.qaOwner?.id ?? ""}
-									members={members}
-									disabled={pending}
-									onChange={(qaAssigneeId) =>
-										void run(() =>
-											onAssign({
-												assigneeId: issue.assignee?.id ?? null,
-												qaAssigneeId: qaAssigneeId || null,
-											}),
-										).catch(() => undefined)
-									}
-								/>
+								{developerMembers.length > 0 ? (
+									<AssignmentMulti
+										label="Developers"
+										members={developerMembers}
+										selected={assigneeIds(issue.developerAssignees)}
+										disabled={pending}
+										onChange={(developerAssigneeIds) =>
+											void run(() =>
+												onAssign({
+													developerAssigneeIds,
+													qaAssigneeIds: assigneeIds(issue.qaAssignees),
+												}),
+											).catch(() => undefined)
+										}
+									/>
+								) : null}
+								{qaMembers.length > 0 ? (
+									<AssignmentMulti
+										label="QA"
+										members={qaMembers}
+										selected={assigneeIds(issue.qaAssignees)}
+										disabled={pending}
+										onChange={(qaAssigneeIds) =>
+											void run(() =>
+												onAssign({
+													developerAssigneeIds: assigneeIds(issue.developerAssignees),
+													qaAssigneeIds,
+												}),
+											).catch(() => undefined)
+										}
+									/>
+								) : null}
 							</div>
 						</section>
 					) : null}
-					{canEdit && getAllowedTransitions(issue.status).length ? (
+					{canEdit && visibleTransitions.length > 0 ? (
 						<section>
 							<Label>Workflow</Label>
 							<div className="mt-2 flex flex-wrap gap-2">
-								{getAllowedTransitions(issue.status).map((status) => (
+								{visibleTransitions.map((status) => (
 									<button
 										key={status}
 										type="button"
@@ -265,39 +296,79 @@ export function IssueDetailPanel({
 					) : null}
 				</div>
 			</SheetContent>
+			{issue.imageUrl ? (
+				<Dialog open={imageOpen} onOpenChange={setImageOpen}>
+					<DialogContent className="h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] bg-[var(--surface)] p-4 sm:max-w-[calc(100vw-2rem)]">
+						<DialogHeader className="pr-10">
+							<DialogTitle>{issue.ticketRef} image</DialogTitle>
+							<DialogDescription>Attached image for {issue.title}</DialogDescription>
+						</DialogHeader>
+						<div className="flex min-h-0 items-center justify-center overflow-hidden rounded-md border border-[var(--line)] bg-black/90 p-2">
+							<img
+								src={issue.imageUrl}
+								alt={`Attachment for ${issue.ticketRef}: ${issue.title}`}
+								className="max-h-full max-w-full object-contain"
+							/>
+						</div>
+						<DialogFooter className="mx-0 mb-0 rounded-b-md bg-transparent p-0 pt-4">
+							<DialogClose className="min-h-10 rounded-md border border-[var(--line)] px-4 text-sm font-semibold hover:border-[var(--accent)]">
+								Close image
+							</DialogClose>
+						</DialogFooter>
+					</DialogContent>
+				</Dialog>
+			) : null}
 		</Sheet>
 	);
 }
-function Assignment({
+function assigneeIds(assignees: Issue["developerAssignees"]): string[] {
+	return assignees.map((assignee) => assignee.id).filter((id): id is string => Boolean(id));
+}
+function AssignmentMulti({
 	label,
-	value,
 	members,
+	selected,
 	disabled,
 	onChange,
 }: {
 	label: string;
-	value: string;
 	members: ServerProjectMember[];
+	selected: string[];
 	disabled: boolean;
-	onChange: (id: string) => void;
+	onChange: (ids: string[]) => void;
 }) {
+	function toggle(id: string) {
+		onChange(
+			selected.includes(id) ? selected.filter((value) => value !== id) : [...selected, id],
+		);
+	}
 	return (
-		<label className="text-sm font-medium">
-			{label}
-			<select
-				value={value}
-				disabled={disabled}
-				onChange={(event) => onChange(event.target.value)}
-				className="app-input mt-1.5"
-			>
-				<option value="">Unassigned</option>
-				{members.map((member) => (
-					<option key={member.id} value={member.id}>
-						{member.name}
-					</option>
-				))}
-			</select>
-		</label>
+		<fieldset className="text-sm font-medium">
+			<legend>{label}</legend>
+			<div className="mt-1.5 max-h-44 space-y-1 overflow-y-auto rounded-md border border-[var(--line)] bg-[var(--bg)] p-2">
+				{members.length === 0 ? (
+					<p className="px-1 py-1 text-xs font-normal text-[var(--ink-soft)]">
+						No {label.toLowerCase()} members
+					</p>
+				) : (
+					members.map((member) => (
+						<label
+							key={member.id}
+							className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-xs font-normal hover:bg-[var(--bg-alt)]"
+						>
+							<input
+								type="checkbox"
+								checked={selected.includes(member.id)}
+								disabled={disabled}
+								onChange={() => toggle(member.id)}
+								className="size-3.5 accent-[var(--accent)]"
+							/>
+							<span className="truncate">{member.name}</span>
+						</label>
+					))
+				)}
+			</div>
+		</fieldset>
 	);
 }
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -321,15 +392,23 @@ function IssueSummary({ issue }: { issue: Issue }) {
 			<dl className="grid gap-4 sm:grid-cols-2">
 				<div>
 					<dt className="font-[var(--mono)] text-[10px] uppercase text-[var(--ink-soft)]">
-						Assignee
+						Developers
 					</dt>
-					<dd className="mt-1 text-sm">{issue.assignee?.name ?? "Unassigned"}</dd>
+					<dd className="mt-1 text-sm">
+						{issue.developerAssignees.length > 0
+							? issue.developerAssignees.map((assignee) => assignee.name).join(", ")
+							: "Unassigned"}
+					</dd>
 				</div>
 				<div>
 					<dt className="font-[var(--mono)] text-[10px] uppercase text-[var(--ink-soft)]">
-						QA owner
+						QA
 					</dt>
-					<dd className="mt-1 text-sm">{issue.qaOwner?.name ?? "Unassigned"}</dd>
+					<dd className="mt-1 text-sm">
+						{issue.qaAssignees.length > 0
+							? issue.qaAssignees.map((assignee) => assignee.name).join(", ")
+							: "Unassigned"}
+					</dd>
 				</div>
 			</dl>
 			{issue.description ? (

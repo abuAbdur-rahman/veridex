@@ -11,6 +11,43 @@ const validEnvironment = {
 };
 
 describe("parseEnvironment", () => {
+	it.each(["127.0.0.1", "localhost", "::1"])(
+		"accepts enabled development authentication on loopback host %s",
+		(HOST) => {
+			expect(() =>
+				parseEnvironment({
+					...validEnvironment,
+					HOST,
+					NODE_ENV: "development",
+					DEV_AUTH_ENABLED: "true",
+				}),
+			).not.toThrow();
+		},
+	);
+
+	it("disables development authentication by default", () => {
+		expect(parseEnvironment(validEnvironment).DEV_AUTH_ENABLED).toBe(false);
+	});
+
+	it("rejects development authentication outside development", () => {
+		for (const NODE_ENV of ["test", "production"] as const) {
+			expect(() =>
+				parseEnvironment({ ...validEnvironment, NODE_ENV, DEV_AUTH_ENABLED: "true" }),
+			).toThrow();
+		}
+	});
+
+	it("rejects enabled development authentication on a non-loopback host", () => {
+		expect(() =>
+			parseEnvironment({
+				...validEnvironment,
+				HOST: "0.0.0.0",
+				NODE_ENV: "development",
+				DEV_AUTH_ENABLED: "true",
+			}),
+		).toThrow();
+	});
+
 	it.each([
 		["http://localhost:5173", "http://localhost:5173"],
 		["https://app.veridex.example/", "https://app.veridex.example"],

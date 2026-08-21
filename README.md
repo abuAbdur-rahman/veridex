@@ -99,6 +99,8 @@ createdb -O veridex veridex_dev
 # 2. Configure env
 cp apps/server/.env.example apps/server/.env
 #   Fill WEB_ORIGIN, DATABASE_URL, DATABASE_URL_UNPOOLED, BETTER_AUTH_SECRET
+#   Optional local authenticated E2E: set DEV_AUTH_ENABLED=true while
+#   NODE_ENV=development and HOST remains loopback-bound.
 
 # 3. Install and verify
 pnpm install
@@ -110,6 +112,11 @@ pnpm --filter @veridex/server db:migrate
 pnpm --filter @veridex/server db:generate
 pnpm --filter @veridex/server db:studio
 ```
+
+With local test auth enabled, `POST /api/dev/test-session` creates or signs in
+`dev-user@localhost.test`, completes onboarding, and sets a normal Better Auth
+session cookie. The route is absent unless development mode, the explicit flag,
+and a loopback `HOST` (`127.0.0.1`, `localhost`, or `::1`) are all present.
 
 The installed PostgreSQL workflow above does not require Docker. Contributors who prefer an isolated PostgreSQL 17 service can use:
 

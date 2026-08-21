@@ -15,6 +15,16 @@ import {
 
 const projectParamsSchema = z.object({ projectId: z.string().uuid() });
 const issueParamsSchema = z.object({ issueId: z.string().uuid() });
+const internalImageUrlPattern = /^\/api\/projects\/[0-9a-f-]{36}\/issue-images\/[0-9a-f-]{36}\.(?:png|jpg|webp)$/i;
+const imageUrlSchema = z.string().trim().max(2048).refine((value) => {
+	if (internalImageUrlPattern.test(value)) return true;
+	try {
+		const url = new URL(value);
+		return url.protocol === "https:" && url.username === "" && url.password === "";
+	} catch {
+		return false;
+	}
+}, "Image URL must use HTTPS");
 
 const createIssueSchema = z.object({
 	title: z.string().trim().min(1).max(200),
@@ -34,7 +44,10 @@ const createIssueSchema = z.object({
 	actualResult: z.string().trim().max(5000).optional(),
 	assigneeId: z.string().uuid().optional(),
 	qaAssigneeId: z.string().uuid().optional(),
+	developerAssigneeIds: z.array(z.string().uuid()).max(100).optional(),
+	qaAssigneeIds: z.array(z.string().uuid()).max(100).optional(),
 	testCaseId: z.string().uuid().optional(),
+	imageUrl: imageUrlSchema.optional(),
 });
 
 const updateIssueSchema = z.object({
@@ -56,11 +69,14 @@ const updateIssueSchema = z.object({
 	actualResult: z.string().trim().max(5000).optional(),
 	assigneeId: z.string().uuid().nullable().optional(),
 	qaAssigneeId: z.string().uuid().nullable().optional(),
+	developerAssigneeIds: z.array(z.string().uuid()).max(100).optional(),
+	qaAssigneeIds: z.array(z.string().uuid()).max(100).optional(),
 	testCaseId: z.string().uuid().nullable().optional(),
+	imageUrl: imageUrlSchema.nullable().optional(),
 });
 
 const listIssuesQuerySchema = z.object({
-	status: z.enum(["backlog", "in_progress", "in_qa", "verified"]).optional(),
+	status: z.enum(["backlog", "in_progress", "in_qa", "verified", "rejected"]).optional(),
 	assigneeId: z.string().uuid().optional(),
 	qaAssigneeId: z.string().uuid().optional(),
 	severity: z.enum(["low", "medium", "high", "critical"]).optional(),
@@ -70,13 +86,13 @@ const listIssuesQuerySchema = z.object({
 });
 
 const updateStatusSchema = z.object({
-	status: z.enum(["backlog", "in_progress", "in_qa", "verified"]),
+	status: z.enum(["backlog", "in_progress", "in_qa", "verified", "rejected"]),
 	note: z.string().trim().max(1000).optional(),
 });
 
 const assignIssueSchema = z.object({
-	assigneeId: z.string().uuid().nullable().optional(),
-	qaAssigneeId: z.string().uuid().nullable().optional(),
+	developerAssigneeIds: z.array(z.string().uuid()).max(100).default([]),
+	qaAssigneeIds: z.array(z.string().uuid()).max(100).default([]),
 });
 
 function parseInput<T>(schema: z.ZodType<T>, input: unknown) {
@@ -171,8 +187,8 @@ export async function issueRoutes(fastify: FastifyInstance) {
 		"/api/projects/:projectId/issues/:issueId/status",
 		async (request) => {
 			const { projectId } = parseInput(projectParamsSchema, request.params);
-			await requireProjectRole(request, projectId, ["dev", "qa", "admin"]);
-			const session = await requireSession(request);
+			const { membership, session } = await requireProjectRole(request, projectId, ["dev", "qa", "tester", "admin"]);
+			await requireSession(request);
 			const { issueId } = parseInput(issueParamsSchema, request.params);
 			const input = parseInput(updateStatusSchema, request.body);
 			return updateStatus(
@@ -183,6 +199,7 @@ export async function issueRoutes(fastify: FastifyInstance) {
 				input.status,
 				"web",
 				input.note,
+				membership.role,
 			);
 		},
 	);
@@ -200,8 +217,8 @@ export async function issueRoutes(fastify: FastifyInstance) {
 				projectId,
 				issueId,
 				session.user.id,
-				input.assigneeId ?? null,
-				input.qaAssigneeId ?? null,
+				input.developerAssigneeIds,
+				input.qaAssigneeIds,
 				"web",
 			);
 		},
