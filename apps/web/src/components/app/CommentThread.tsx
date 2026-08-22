@@ -23,8 +23,12 @@ export function CommentThread({
 		event.preventDefault();
 		const nextBody = body.trim();
 		if (!nextBody) return;
-		await onSubmit(nextBody);
-		setBody("");
+		try {
+			await onSubmit(nextBody);
+			setBody("");
+		} catch {
+			// Parent surfaces the submission error; keep the entered text for retry.
+		}
 	}
 	return (
 		<section aria-label="Comments">

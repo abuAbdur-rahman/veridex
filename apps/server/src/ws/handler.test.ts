@@ -178,4 +178,21 @@ describe("websocket handler", () => {
 		socket.send(JSON.stringify({ type: "ping" }));
 		expect(await closedWith(socket)).toBe(4003);
 	});
+
+	it("closes 4001 via server-side revalidation without any client message", async () => {
+		vi.useFakeTimers();
+		try {
+			const { app, port } = await createServer();
+			apps.push(app);
+			const socket = connect(port, "/ws?projectId=a1b2c3d4-0000-4000-8000-000000000001");
+			await new Promise<void>((resolve) => socket.once("open", () => resolve()));
+			getSession.mockReset().mockResolvedValue(null);
+
+			await vi.advanceTimersByTimeAsync(60_000);
+			expect(getSession).toHaveBeenCalled();
+			expect(await closedWith(socket)).toBe(4001);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
 });

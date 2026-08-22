@@ -4,8 +4,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/app/PageHeader";
 import { SectionLabel } from "@/components/app/FormField";
 import { ApiError } from "@/api/client";
-import { createTeamInvite } from "@/api/teams";
-import { usePendingTeamInvites, useRevokeTeamInvite, useTeamMembers, useTeams } from "@/queries/teams";
+import { useCreateTeamInvite, usePendingTeamInvites, useRevokeTeamInvite, useTeamMembers, useTeams } from "@/queries/teams";
 
 interface TeamSettingsScreenProps {
 	teamId: string;
@@ -16,6 +15,7 @@ export function TeamSettingsScreen({ teamId }: TeamSettingsScreenProps) {
 	const { data: members, isPending: membersPending, error: membersError } = useTeamMembers(teamId);
 	const invitesQuery = usePendingTeamInvites(teamId);
 	const revokeMutation = useRevokeTeamInvite(teamId);
+	const inviteMutation = useCreateTeamInvite(teamId);
 	const teamName = teams?.find((team) => team.id === teamId)?.name ?? "Team";
 	const [email, setEmail] = useState("");
 	const [status, setStatus] = useState("");
@@ -28,7 +28,7 @@ export function TeamSettingsScreen({ teamId }: TeamSettingsScreenProps) {
 		setInviteBusy(true);
 		setStatus("");
 		try {
-			const invite = await createTeamInvite(teamId, { email, teamRole: "member" });
+			const invite = await inviteMutation.mutateAsync({ email, teamRole: "member" });
 			const link = `${window.location.origin}/join/team/${invite.token}`;
 			setInviteLink(link);
 			setEmail("");

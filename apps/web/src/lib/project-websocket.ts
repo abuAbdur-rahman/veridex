@@ -1,5 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { issueHistoryQueryKey, issueQueryKey, issuesQueryKey } from "@/queries/issues";
+import { issueCommentsQueryKey, issueHistoryQueryKey, issueQueryKey, issuesQueryKey } from "@/queries/issues";
 
 export type ProjectSocketEvent =
 	| { type: "issue:created"; payload: { issueId: string; projectId: string } }
@@ -7,6 +7,18 @@ export type ProjectSocketEvent =
 	| { type: "issue:status_changed"; payload: { issueId: string; projectId: string } }
 	| { type: "issue:assigned"; payload: { issueId: string; projectId: string } }
 	| { type: "issue:deleted"; payload: { issueId: string; projectId: string } }
+	| {
+			type: "comment:created";
+			payload: { commentId: string; issueId: string; projectId: string };
+	  }
+	| {
+			type: "comment:updated";
+			payload: { commentId: string; issueId: string; projectId: string };
+	  }
+	| {
+			type: "comment:deleted";
+			payload: { commentId: string; issueId: string; projectId: string };
+	  }
 	| { type: "auth:expired" };
 
 const MAX_RECONNECT_ATTEMPTS = 5;
@@ -102,6 +114,19 @@ export function connectProjectWebSocket(
 					typeof value.payload.issueId === "string"
 				) {
 					refresh(value.payload.issueId);
+				}
+				if (
+					typeof type === "string" &&
+					type.startsWith("comment:") &&
+					"payload" in value &&
+					value.payload &&
+					typeof value.payload === "object" &&
+					"issueId" in value.payload &&
+					typeof value.payload.issueId === "string"
+				) {
+					void queryClient.invalidateQueries({
+						queryKey: issueCommentsQueryKey(projectId, value.payload.issueId),
+					});
 				}
 			} catch {
 				// Ignore malformed messages from a peer; the next query remains authoritative.

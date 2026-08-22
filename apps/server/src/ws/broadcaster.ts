@@ -27,7 +27,19 @@ export type WsEvent =
 			};
 	  }
 	| { type: "issue:assigned"; payload: { issueId: string; projectId: string } }
-	| { type: "issue:deleted"; payload: { issueId: string; projectId: string } };
+	| { type: "issue:deleted"; payload: { issueId: string; projectId: string } }
+	| {
+			type: "comment:created";
+			payload: { commentId: string; issueId: string; projectId: string };
+	  }
+	| {
+			type: "comment:updated";
+			payload: { commentId: string; issueId: string; projectId: string };
+	  }
+	| {
+			type: "comment:deleted";
+			payload: { commentId: string; issueId: string; projectId: string };
+	  };
 
 // In-memory room registry. Single-instance only — see backend spec §3 scaling
 // limit. Swap to Postgres LISTEN/NOTIFY over the pg-boss connection for
@@ -59,8 +71,9 @@ export function broadcast(projectId: string, event: WsEvent): void {
 			try {
 				socket.send(message);
 			} catch {
-				// A socket that fails to send is treated as gone; the close
-				// handler removes it from the room on the next event.
+				// A socket that fails to send is treated as gone immediately;
+				// a later close event may never arrive.
+				leaveRoom(projectId, socket);
 			}
 		}
 	}

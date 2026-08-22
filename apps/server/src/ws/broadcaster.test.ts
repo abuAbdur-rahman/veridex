@@ -43,4 +43,33 @@ describe("broadcaster", () => {
 		leaveRoom("p1", closedSocket);
 		leaveRoom("p1", brokenSocket);
 	});
+
+	it("broadcast removes a socket whose send fails and deletes the empty room", () => {
+		const sent: string[] = [];
+		const healthy = {
+			readyState: WebSocket.OPEN,
+			send: (msg: string) => sent.push(msg),
+		} as unknown as WebSocket;
+		const broken = {
+			readyState: WebSocket.OPEN,
+			send: () => {
+				throw new Error("nope");
+			},
+		} as unknown as WebSocket;
+
+		joinRoom("p2", healthy);
+		joinRoom("p2", broken);
+
+		broadcast("p2", {
+			type: "comment:created",
+			payload: { commentId: "c1", issueId: "i1", projectId: "p2" },
+		});
+		expect(sent).toHaveLength(1);
+
+		sent.length = 0;
+		broadcast("p2", { type: "issue:created", payload: { issueId: "i1", projectId: "p2" } });
+		expect(sent).toHaveLength(1);
+
+		leaveRoom("p2", healthy);
+	});
 });

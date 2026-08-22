@@ -1,5 +1,6 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { listPendingTeamInvites, listTeamMembers, listTeams, revokeTeamInvite } from "@/api/teams";
+import { createTeamInvite, listPendingTeamInvites, listTeamMembers, listTeams, revokeTeamInvite } from "@/api/teams";
+import type { TeamRole } from "@/lib/veridex-types";
 
 export const teamsQueryKey = ["teams"] as const;
 
@@ -40,6 +41,15 @@ export function useTeamMembers(teamId: string) {
 
 export function usePendingTeamInvites(teamId: string) {
 	return useQuery(pendingTeamInvitesQueryOptions(teamId));
+}
+
+export function useCreateTeamInvite(teamId: string) {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: (input: { email: string; teamRole: Exclude<TeamRole, "owner"> }) =>
+			createTeamInvite(teamId, input),
+		onSuccess: () => queryClient.invalidateQueries({ queryKey: ["teams", teamId, "invites"] }),
+	});
 }
 
 export function useRevokeTeamInvite(teamId: string) {
