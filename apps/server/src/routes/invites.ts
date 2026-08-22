@@ -5,10 +5,13 @@ import { ForbiddenError, ValidationError } from "../lib/errors.js";
 import {
 	acceptInvite,
 	createInvite,
+	listPendingInvites,
+	revokePendingInvite,
 	validateInvite,
 } from "../services/invite.service.js";
 
 const teamParamsSchema = z.object({ teamId: z.string().uuid() });
+const inviteIdParamsSchema = z.object({ teamId: z.string().uuid(), inviteId: z.string().uuid() });
 const inviteParamsSchema = z.object({
 	token: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
 });
@@ -24,6 +27,12 @@ function parseInput<T>(schema: z.ZodType<T>, input: unknown) {
 }
 
 export async function inviteRoutes(fastify: FastifyInstance) {
+	fastify.get("/api/teams/:teamId/invites", async (request) => {
+		const { teamId } = parseInput(teamParamsSchema, request.params);
+		await requireTeamRole(request, teamId, ["owner", "admin"]);
+		return listPendingInvites(fastify.db, teamId);
+	});
+
 	fastify.post("/api/teams/:teamId/invites", async (request, reply) => {
 		const { teamId } = parseInput(teamParamsSchema, request.params);
 		const input = parseInput(createInviteSchema, request.body);
@@ -46,6 +55,13 @@ export async function inviteRoutes(fastify: FastifyInstance) {
 			teamRole: input.teamRole,
 		});
 		return reply.status(201).send(invite);
+	});
+
+	fastify.delete("/api/teams/:teamId/invites/:inviteId", async (request, reply) => {
+		const { teamId, inviteId } = parseInput(inviteIdParamsSchema, request.params);
+		await requireTeamRole(request, teamId, ["owner", "admin"]);
+		await revokePendingInvite(fastify.db, teamId, inviteId);
+		return reply.status(204).send();
 	});
 
 	fastify.get("/api/invites/:token/validate", async (request) => {

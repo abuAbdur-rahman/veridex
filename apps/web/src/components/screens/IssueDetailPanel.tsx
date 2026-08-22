@@ -1,6 +1,7 @@
 import { ImageIcon, Save, Trash2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { SeverityBadge } from "@/components/app/SeverityBadge";
+import { CommentThread } from "@/components/app/CommentThread";
 import { StatusHistory } from "@/components/app/StatusHistory";
 import { StatusPill } from "@/components/app/StatusPill";
 import {
@@ -30,6 +31,7 @@ import {
 } from "@/lib/veridex-types";
 import type { ServerProjectMember } from "@/api/projects";
 import type { UpdateIssueInput } from "@/api/issues";
+import type { ServerComment } from "@/api/comments";
 
 interface IssueDetailPanelProps {
 	issue: Issue;
@@ -38,11 +40,16 @@ interface IssueDetailPanelProps {
 	role: ProjectRole;
 	pending?: boolean;
 	historyPending?: boolean;
+	comments: ServerComment[];
+	commentsPending?: boolean;
+	commentPending?: boolean;
+	commentError?: string;
 	onClose: () => void;
 	onUpdate: (input: UpdateIssueInput) => Promise<void>;
 	onStatusChange: (status: IssueStatus, note?: string) => Promise<void>;
 	onAssign: (input: { developerAssigneeIds: string[]; qaAssigneeIds: string[] }) => Promise<void>;
 	onDelete: () => Promise<void>;
+	onComment: (body: string) => Promise<void>;
 }
 export function IssueDetailPanel({
 	issue,
@@ -51,11 +58,16 @@ export function IssueDetailPanel({
 	role,
 	pending = false,
 	historyPending = false,
+	comments,
+	commentsPending = false,
+	commentPending = false,
+	commentError,
 	onClose,
 	onUpdate,
 	onStatusChange,
 	onAssign,
 	onDelete,
+	onComment,
 }: IssueDetailPanelProps) {
 	const [editing, setEditing] = useState(false);
 	const [imageOpen, setImageOpen] = useState(false);
@@ -272,12 +284,19 @@ export function IssueDetailPanel({
 					) : (
 						<StatusHistory entries={history} />
 					)}
-					<section>
-						<Label>Comments</Label>
-						<p className="mt-2 rounded-md border border-[var(--line)] bg-[var(--bg)] px-3 py-3 text-sm text-[var(--ink-soft)]">
-							Comments are not available for server-backed issues yet.
-						</p>
-					</section>
+					{commentsPending ? (
+						<p className="text-sm text-[var(--ink-soft)]">Loading comments...</p>
+					) : (
+						<CommentThread
+							comments={comments}
+							pending={commentPending}
+							error={commentError}
+							resolveAuthor={(authorId) =>
+								members.find((member) => member.id === authorId)?.name ?? authorId
+							}
+							onSubmit={onComment}
+						/>
+					)}
 					{canDelete ? (
 						<section className="border-t border-[var(--line)] pt-5">
 							<button

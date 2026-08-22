@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, isNull } from "drizzle-orm";
 import type { Database } from "../db/client.js";
 import { invites, team, teamMember } from "../db/schema/index.js";
 import { AppError, ForbiddenError, NotFoundError } from "../lib/errors.js";
@@ -80,6 +80,29 @@ export async function createInvite(
 	}
 
 	return { ...createdInvite, token };
+}
+
+export async function listPendingInvites(db: Database, teamId: string) {
+	return db
+		.select({
+			id: invites.id,
+			email: invites.email,
+			teamRole: invites.teamRole,
+			invitedBy: invites.invitedBy,
+			expiresAt: invites.expiresAt,
+			createdAt: invites.createdAt,
+		})
+		.from(invites)
+		.where(and(eq(invites.teamId, teamId), isNull(invites.acceptedAt)))
+		.orderBy(desc(invites.createdAt));
+}
+
+export async function revokePendingInvite(db: Database, teamId: string, inviteId: string) {
+	const [deleted] = await db
+		.delete(invites)
+		.where(and(eq(invites.id, inviteId), eq(invites.teamId, teamId), isNull(invites.acceptedAt)))
+		.returning({ id: invites.id });
+	if (!deleted) throw new NotFoundError("Pending invite");
 }
 
 export async function validateInvite(db: Database, token: string) {

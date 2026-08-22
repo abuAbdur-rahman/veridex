@@ -1,6 +1,7 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Plus, Search } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { EmptyState } from "@/components/app/EmptyState";
 import { PageHeader } from "@/components/app/PageHeader";
 import { AdminBoard } from "@/components/screens/AdminBoard";
@@ -11,13 +12,16 @@ import { ReportIssueModal, type ReportValues } from "@/components/screens/Report
 import { TesterViewScreen } from "@/components/screens/TesterViewScreen";
 import { requiresAuditNote } from "@/lib/veridex-types";
 import { mapServerHistory, mapServerIssue } from "@/lib/server-mappers";
+import { connectProjectWebSocket } from "@/lib/project-websocket";
 import { useMe } from "@/queries/session";
 import { useProject, useProjectMembers } from "@/queries/projects";
 import {
 	useAssignIssue,
 	useCreateIssue,
 	useDeleteIssue,
+	useCreateIssueComment,
 	useIssue,
+	useIssueComments,
 	useIssueHistory,
 	useIssues,
 	useUpdateIssue,
@@ -34,6 +38,7 @@ interface ProjectHomeScreenProps {
 }
 export function ProjectHomeScreen({ projectId, view, query, issueId }: ProjectHomeScreenProps) {
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 	const { data: me } = useMe();
 	const projectQuery = useProject(projectId);
 	const membersQuery = useProjectMembers(projectId);
@@ -43,6 +48,8 @@ export function ProjectHomeScreen({ projectId, view, query, issueId }: ProjectHo
 	);
 	const selectedQuery = useIssue(projectId, issueId ?? "");
 	const historyQuery = useIssueHistory(projectId, issueId ?? "");
+	const commentsQuery = useIssueComments(projectId, issueId ?? "");
+	const commentMutation = useCreateIssueComment(projectId, issueId ?? "");
 	const createMutation = useCreateIssue(projectId);
 	const uploadMutation = useUploadIssueImage(projectId);
 	const statusMutation = useUpdateIssueStatus(projectId);
@@ -52,6 +59,14 @@ export function ProjectHomeScreen({ projectId, view, query, issueId }: ProjectHo
 	const [reportOpen, setReportOpen] = useState(false);
 	const [reportError, setReportError] = useState("");
 	const [pageError, setPageError] = useState("");
+	const [commentError, setCommentError] = useState("");
+	useEffect(
+		() =>
+			connectProjectWebSocket(projectId, queryClient, () => {
+				void navigate({ to: "/login", search: { redirect: window.location.pathname } });
+			}),
+		[projectId, queryClient, navigate],
+	);
 	const user = me?.user;
 	const role: ProjectRole =
 		membersQuery.data?.find((member) => member.id === user?.id)?.role ?? "tester";
@@ -216,6 +231,10 @@ export function ProjectHomeScreen({ projectId, view, query, issueId }: ProjectHo
 					history={history}
 					members={membersQuery.data ?? []}
 					role={role}
+					comments={commentsQuery.data ?? []}
+					commentsPending={commentsQuery.isPending}
+					commentPending={commentMutation.isPending}
+					commentError={commentsQuery.isError ? commentsQuery.error.message : commentError}
 					pending={busy}
 					historyPending={historyQuery.isPending}
 					onClose={() => updateSearch({ issue: undefined })}
@@ -231,6 +250,15 @@ export function ProjectHomeScreen({ projectId, view, query, issueId }: ProjectHo
 					onDelete={async () => {
 						await deleteMutation.mutateAsync(selectedIssue.id);
 						updateSearch({ issue: undefined });
+					}}
+					onComment={async (body) => {
+						setCommentError("");
+						try {
+							await commentMutation.mutateAsync(body);
+						} catch (value) {
+							setCommentError(value instanceof Error ? value.message : "Could not post comment.");
+							throw value;
+						}
 					}}
 				/>
 			) : null}

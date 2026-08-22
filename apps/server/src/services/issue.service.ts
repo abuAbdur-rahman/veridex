@@ -569,13 +569,18 @@ export async function assignIssue(
 	projectId: string,
 	issueId: string,
 	changedBy: string,
-	developerAssigneeIds: string[],
-	qaAssigneeIds: string[],
+	developerAssigneeIds: string[] | undefined,
+	qaAssigneeIds: string[] | undefined,
 	_source: ChangeSource,
 ): Promise<IssueWithAssignments> {
 	await verifyProjectMembership(db, projectId, changedBy);
-	const developers = distinctIds(developerAssigneeIds);
-	const qaAssignees = distinctIds(qaAssigneeIds);
+	const assignmentMap = await getAssignmentIds(db, [issueId]);
+	const current = assignmentMap.get(issueId) ?? {
+		developerAssigneeIds: [],
+		qaAssigneeIds: [],
+	};
+	const developers = distinctIds(developerAssigneeIds ?? current.developerAssigneeIds);
+	const qaAssignees = distinctIds(qaAssigneeIds ?? current.qaAssigneeIds);
 	await verifyAssignmentRoles(db, projectId, developers, qaAssignees);
 
 	return db.transaction(async (tx) => {
