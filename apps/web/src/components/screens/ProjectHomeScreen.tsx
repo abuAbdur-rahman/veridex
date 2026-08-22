@@ -19,7 +19,9 @@ import {
 	useAssignIssue,
 	useCreateIssue,
 	useDeleteIssue,
+	useCreateIssueComment,
 	useIssue,
+	useIssueComments,
 	useIssueHistory,
 	useIssues,
 	useUpdateIssue,
@@ -46,6 +48,8 @@ export function ProjectHomeScreen({ projectId, view, query, issueId }: ProjectHo
 	);
 	const selectedQuery = useIssue(projectId, issueId ?? "");
 	const historyQuery = useIssueHistory(projectId, issueId ?? "");
+	const commentsQuery = useIssueComments(projectId, issueId ?? "");
+	const commentMutation = useCreateIssueComment(projectId, issueId ?? "");
 	const createMutation = useCreateIssue(projectId);
 	const uploadMutation = useUploadIssueImage(projectId);
 	const statusMutation = useUpdateIssueStatus(projectId);
@@ -55,6 +59,7 @@ export function ProjectHomeScreen({ projectId, view, query, issueId }: ProjectHo
 	const [reportOpen, setReportOpen] = useState(false);
 	const [reportError, setReportError] = useState("");
 	const [pageError, setPageError] = useState("");
+	const [commentError, setCommentError] = useState("");
 	useEffect(
 		() =>
 			connectProjectWebSocket(projectId, queryClient, () => {
@@ -226,6 +231,10 @@ export function ProjectHomeScreen({ projectId, view, query, issueId }: ProjectHo
 					history={history}
 					members={membersQuery.data ?? []}
 					role={role}
+					comments={commentsQuery.data ?? []}
+					commentsPending={commentsQuery.isPending}
+					commentPending={commentMutation.isPending}
+					commentError={commentsQuery.isError ? commentsQuery.error.message : commentError}
 					pending={busy}
 					historyPending={historyQuery.isPending}
 					onClose={() => updateSearch({ issue: undefined })}
@@ -241,6 +250,15 @@ export function ProjectHomeScreen({ projectId, view, query, issueId }: ProjectHo
 					onDelete={async () => {
 						await deleteMutation.mutateAsync(selectedIssue.id);
 						updateSearch({ issue: undefined });
+					}}
+					onComment={async (body) => {
+						setCommentError("");
+						try {
+							await commentMutation.mutateAsync(body);
+						} catch (value) {
+							setCommentError(value instanceof Error ? value.message : "Could not post comment.");
+							throw value;
+						}
 					}}
 				/>
 			) : null}

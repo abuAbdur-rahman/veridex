@@ -29,6 +29,15 @@ export interface TeamInvite {
 	expiresAt: string;
 }
 
+export interface PendingTeamInvite {
+	id: string;
+	email: string;
+	teamRole: TeamRole;
+	invitedBy: string;
+	expiresAt: string;
+	createdAt: string;
+}
+
 const TEAM_ROLES = new Set<TeamRole>(["owner", "admin", "member"]);
 
 function isTeamRole(value: unknown): value is TeamRole {
@@ -76,6 +85,18 @@ function isTeamInvite(value: unknown): value is TeamInvite {
 	);
 }
 
+function isPendingTeamInvite(value: unknown): value is PendingTeamInvite {
+	return (
+		isRecord(value) &&
+		typeof value.id === "string" &&
+		typeof value.email === "string" &&
+		isTeamRole(value.teamRole) &&
+		typeof value.invitedBy === "string" &&
+		typeof value.expiresAt === "string" &&
+		typeof value.createdAt === "string"
+	);
+}
+
 export function listTeams() {
 	return apiRequest(
 		"/api/teams",
@@ -105,4 +126,20 @@ export function createTeamInvite(
 		method: "POST",
 		body: JSON.stringify(input),
 	});
+}
+
+export function listPendingTeamInvites(teamId: string) {
+	return apiRequest(
+		`/api/teams/${encodeURIComponent(teamId)}/invites`,
+		(value): value is PendingTeamInvite[] =>
+			Array.isArray(value) && value.every(isPendingTeamInvite),
+	);
+}
+
+export function revokeTeamInvite(teamId: string, inviteId: string) {
+	return apiRequest(
+		`/api/teams/${encodeURIComponent(teamId)}/invites/${encodeURIComponent(inviteId)}`,
+		(value): value is null => value === null,
+		{ method: "DELETE" },
+	);
 }

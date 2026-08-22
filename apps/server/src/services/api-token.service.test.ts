@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import type { Database } from "../db/client.js";
 import {
+	authenticateApiToken,
 	createApiToken,
 	listApiTokens,
 	revokeApiToken,
@@ -101,4 +102,36 @@ describe("API token service", () => {
 			statusCode: 404,
 		});
 	});
+
+	it("authenticates an active token and updates last-used time", async () => {
+		const token = `vrx_${"a".repeat(32)}`;
+		const tokenRow = { id: "token-1", userId: "user-1" };
+		const limit = vi.fn(async () => [tokenRow]);
+		const where = vi.fn(() => ({ limit }));
+		const set = vi.fn(() => ({ where: vi.fn(async () => undefined) }));
+		const db = {
+			select: vi.fn(() => ({
+				from: vi.fn(() => ({ where })),
+			})),
+			update: vi.fn(() => ({ set })),
+		} as unknown as Database;
+
+		await expect(authenticateApiToken(db, `Bearer ${token}`)).resolves.toEqual({
+			userId: "user-1",
+			tokenId: "token-1",
+		});
+		expect(limit).toHaveBeenCalledOnce();
+		expect(set).toHaveBeenCalledWith({ lastUsedAt: expect.any(Date) });
+	});
+
+	it.each([undefined, "Basic credentials", "Bearer vrx_short"]) (
+		"rejects malformed authorization header %s",
+		async (authorizationHeader) => {
+			const db = {} as Database;
+			await expect(authenticateApiToken(db, authorizationHeader)).rejects.toMatchObject({
+				code: "UNAUTHORIZED",
+				statusCode: 401,
+			});
+		},
+	);
 });

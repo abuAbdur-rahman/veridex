@@ -14,12 +14,15 @@ import {
 	type UpdateIssueInput,
 } from "@/api/issues";
 import type { IssueStatus } from "@/lib/veridex-types";
+import { createComment, listComments } from "@/api/comments";
 
 export const issuesQueryKey = (projectId: string) => ["projects", projectId, "issues"] as const;
 export const issueQueryKey = (projectId: string, issueId: string) =>
 	["projects", projectId, "issues", issueId] as const;
 export const issueHistoryQueryKey = (projectId: string, issueId: string) =>
 	["projects", projectId, "issues", issueId, "history"] as const;
+export const issueCommentsQueryKey = (projectId: string, issueId: string) =>
+	["projects", projectId, "issues", issueId, "comments"] as const;
 export const issuesQueryOptions = (projectId: string, filters: IssueFilters = {}) =>
 	queryOptions({
 		queryKey: [...issuesQueryKey(projectId), filters] as const,
@@ -41,6 +44,13 @@ export const issueHistoryQueryOptions = (projectId: string, issueId: string) =>
 		enabled: Boolean(projectId && issueId),
 		retry: false,
 	});
+export const issueCommentsQueryOptions = (projectId: string, issueId: string) =>
+	queryOptions({
+		queryKey: issueCommentsQueryKey(projectId, issueId),
+		queryFn: () => listComments(projectId, issueId),
+		enabled: Boolean(projectId && issueId),
+		retry: false,
+	});
 export function useIssues(projectId: string, filters: IssueFilters = {}) {
 	return useQuery(issuesQueryOptions(projectId, filters));
 }
@@ -49,6 +59,16 @@ export function useIssue(projectId: string, issueId: string) {
 }
 export function useIssueHistory(projectId: string, issueId: string) {
 	return useQuery(issueHistoryQueryOptions(projectId, issueId));
+}
+export function useIssueComments(projectId: string, issueId: string) {
+	return useQuery(issueCommentsQueryOptions(projectId, issueId));
+}
+export function useCreateIssueComment(projectId: string, issueId: string) {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: (body: string) => createComment(projectId, issueId, body),
+		onSuccess: () => queryClient.invalidateQueries({ queryKey: issueCommentsQueryKey(projectId, issueId) }),
+	});
 }
 function useRefresh(projectId: string) {
 	const qc = useQueryClient();

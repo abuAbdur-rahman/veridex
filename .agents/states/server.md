@@ -1,10 +1,10 @@
 # Server State
 
-Last updated: 2026-08-21
+Last updated: 2026-08-22
 
 ## Current Boundary
 
-The backend foundation, onboarding, teams/invites, projects/membership, issues/status-history, spreadsheet import, realtime WebSocket, and API-token REST vertical slices are implemented in `apps/server/`. MCP transport and tools remain unimplemented.
+The backend foundation, onboarding, teams/invites, projects/membership, issues/status-history, spreadsheet import, realtime WebSocket, API-token REST, comments, and MCP vertical slices are implemented in `apps/server/`. The MCP endpoint is currently stateless manual JSON-RPC; SDK Streamable HTTP transport remains planned.
 
 ## Implemented API Token Slice
 
@@ -20,7 +20,7 @@ The authenticated REST lifecycle is registered in `apps/server/src/app.ts` and i
 3. `DELETE /api/tokens/:id` validates the UUID, enforces user ownership, and soft-revokes the token with `204`.
 4. Focused tests cover session enforcement, validation, one-time token return, hash-only persistence, ownership, and soft revocation.
 
-This slice does not add the MCP SDK, bearer-token authentication, MCP tools, access-summary/activity endpoints, or multi-instance WebSocket transport.
+The MCP SDK dependency is present for the planned Streamable HTTP transport. The current stateless endpoint uses the same bearer-token format and service authorization rules while that transport migration remains pending.
 
 The active implementation plan is sourced from:
 
@@ -98,6 +98,26 @@ Routes:
 Invite bearer tokens are random URL-safe values returned once. Only the SHA-256 hash and a safe prefix are persisted. Personal teams cannot issue or accept invites. Invite acceptance locks the invite and atomically inserts membership and marks the invite accepted.
 
 Request logging redacts invite tokens: the Fastify `req` serializer masks the 43-character token segment in `/api/invites/:token/*` logged URLs (`apps/server/src/app.ts`, `redactInviteTokenUrl`), honoring the db-schema "never stored or logged" contract.
+- `GET /api/teams/:teamId/invites` lists pending invites for owners/admins; `DELETE /api/teams/:teamId/invites/:inviteId` hard-deletes pending invites because the schema has no revocation column.
+
+## Implemented Comments And MCP Slice
+
+Registered in `apps/server/src/app.ts` and implemented by:
+
+- `apps/server/src/routes/comments.ts`
+- `apps/server/src/services/comment.service.ts`
+- `apps/server/src/routes/mcp.ts`
+- `apps/server/src/services/api-token.service.ts`
+
+Routes:
+
+- `GET/POST /api/projects/:projectId/issues/:issueId/comments` lists and creates comments for project members.
+- `PATCH/DELETE /api/projects/:projectId/comments/:commentId` allows comment authors or project admins to edit/soft-delete comments.
+- `GET /api/mcp/access-summary` returns project memberships and the six tools available for each role.
+- `GET /api/mcp/activity` returns the caller's latest MCP-sourced status changes.
+- `POST /mcp` requires an active, nonexpired, nonrevoked `vrx_` bearer token and supports `tools/list` plus the six scoped issue tools. Tool failures are returned as JSON-RPC `result.isError`; bearer authentication failures retain the shared HTTP error envelope.
+
+MCP tool permissions are `tester+` for list/get/create, `dev+` for update/status, and `qa+` for assignment. Status and assignment calls pass `source: "mcp"`.
 
 ## Implemented Projects And Membership Slice
 
@@ -230,7 +250,7 @@ pnpm db:migrate
 
 Latest results:
 
-- Vitest: 22 files, 282 tests passed (import worksheet selection, status-assignee mapping, multi-sheet parsing, status normalization, cross-project status-history rejection, sole-member auto-assignment, mapped-QA precedence, invalid-role mapping rejection, uppercase extension acceptance, queue-failure consistency, WebSocket room join/leave/broadcast, and session/membership close-code handling).
+- Vitest: 25 files, 309 tests passed, including bearer-token authentication, pending invite list/revoke routes, and MCP JSON-RPC role/error behavior.
 - Typecheck: passed.
 - Build: passed.
 
@@ -256,6 +276,7 @@ Focused tests:
 - `apps/server/src/auth/index.test.ts`
 - `apps/server/src/ws/broadcaster.test.ts`
 - `apps/server/src/ws/handler.test.ts`
+- `apps/server/src/routes/mcp.test.ts`
 
 Rollback and concurrency behavior currently use a stateful transaction double. Add a dedicated real-PostgreSQL integration-test harness before relying on these tests as full transaction/concurrency proof.
 
@@ -273,9 +294,9 @@ Completed task:
 - Import Option D refactor: parsed rows persisted as JSONB on `import_jobs.parsed_rows` during synchronous upload parse; R2 storage eliminated for imports; `import-parse` worker removed; `import-insert` worker reads from DB instead of re-downloading file; `getPreview` now returns actual sampleRows from stored data; `fileDownloader` dependency removed from worker registration.
 - Import worksheet selection and status-assignee mapping: XLSX stores versioned `{version:2, worksheets}` with worksheet metadata; `parseExcelFileForImport` returns all worksheets; preview accepts `worksheetIndex` query param and returns worksheet list; confirm accepts `worksheetIndex` + `statusAssigneeMapping`; worker selects one worksheet, routes assignees by final status (`backlog/in_progress/rejected`→`assigneeId`, `in_qa/verified`→`qaAssigneeId`), auto-maps `assigneeId`/`qaAssigneeId` columns; `normalizeImportStatus` maps `pending` to `in_progress` at user-facing boundaries; status-assignee IDs validated against project membership. 276 tests pass.
 - Realtime WebSocket slice: `@fastify/websocket` plugin registered after auth in `app.ts`; `GET /ws?projectId=` handler validates session + project membership and uses close codes `4000`/`4001`/`4003`; `ping`→`pong`/`auth:expired` re-checks session; in-memory per-project room broadcaster emits `issue:created|updated|status_changed|assigned|deleted` from issue route call sites and the import worker, all after transaction commit. WebSocket realtime tests added (broadcaster + handler). 282 tests pass.
-- API-token REST slice: `GET/POST /api/tokens` and `DELETE /api/tokens/:id` require a Better Auth session; creation returns plaintext once, stores only SHA-256 plus prefix, and revocation is ownership-scoped and soft. Focused route/service tests cover validation and security invariants. Full suite has 296 passing tests; typecheck and build pass.
+- API-token REST slice: `GET/POST /api/tokens` and `DELETE /api/tokens/:id` require a Better Auth session; creation returns plaintext once, stores only SHA-256 plus prefix, and revocation is ownership-scoped and soft. Focused route/service tests cover validation and security invariants. Bearer authentication is also used by `/mcp` and updates `lastUsedAt`.
 - Import hardening and sole-member pass (review findings fixed): `getIssueStatusHistory` is project-scoped (no cross-project history reads); import duplicate-title detection is case-insensitive and backed by migration `0012`'s unique expression index; imported issues persist `importJobId`; row-mapped developer/QA IDs and status-mapping IDs are role-validated against project membership; `mappedQaAssigneeId` now takes precedence for `in_qa` rows; `confirmImport` publishes the queue payload before persisting the mapping so enqueue failure leaves job state untouched; upload accepts uppercase `.CSV`/`.XLSX` extensions; new issues created in a single-member project auto-assign the sole member (web creation and imports), while explicit assignments in multi-member projects remain role-validated.
 
 ## Next Recommended Slice
 
-Implement MCP bearer authentication and the six scoped issue tools. Keep authorization scoped to team/project membership, validate all route input with Zod, pass `source: 'web' | 'mcp' | 'import'` at every status-changing call site, and broadcast WebSocket events only after transactions commit. Note: the WebSocket broadcaster is single-instance (in-memory `Map`); replace with Postgres `LISTEN`/`NOTIFY` via pg-boss before running more than one server instance.
+Migrate `/mcp` to `StreamableHTTPServerTransport` from `@modelcontextprotocol/sdk`, preserving stateless bearer authentication and the current tool callbacks. Note: the WebSocket broadcaster is single-instance (in-memory `Map`); replace with Postgres `LISTEN`/`NOTIFY` via pg-boss before running more than one server instance.

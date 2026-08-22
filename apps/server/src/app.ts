@@ -27,6 +27,8 @@ import { registerImportWorker } from "./jobs/import.worker.js";
 import { registerVerifiedIssueCleanupWorker } from "./jobs/verified-issue-cleanup.worker.js";
 import { devAuthRoutes } from "./routes/dev-auth.js";
 import { apiTokenRoutes } from "./routes/api-tokens.js";
+import { commentRoutes } from "./routes/comments.js";
+import { mcpRoutes } from "./routes/mcp.js";
 
 export interface BuildAppOptions {
 	db?: Database;
@@ -184,6 +186,8 @@ export function buildApp(
 
 	app.register(importRoutes);
 	app.register(apiTokenRoutes);
+	app.register(commentRoutes);
+	app.register(mcpRoutes);
 	app.register(devAuthRoutes);
 
 	if (options.queue) {
