@@ -77,7 +77,14 @@ export async function deleteComment(db: Database, projectId: string, commentId: 
 		.limit(1);
 	if (!comment) throw new NotFoundError("Comment");
 	if (comment.authorId !== userId && role !== "admin") throw new ForbiddenError();
-	await db.update(comments).set({ deletedAt: new Date(), updatedAt: new Date() }).where(eq(comments.id, commentId));
+	const now = new Date();
+	const [deleted] = await db
+		.update(comments)
+		.set({ deletedAt: now, updatedAt: now })
+		.where(and(eq(comments.id, commentId), isNull(comments.deletedAt)))
+		.returning({ id: comments.id, issueId: comments.issueId });
+	if (!deleted) throw new NotFoundError("Comment");
+	return deleted;
 }
 
 async function verifyCommentAccess(db: Database, projectId: string, commentId: string, userId: string): Promise<ProjectRole> {

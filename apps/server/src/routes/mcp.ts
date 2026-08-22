@@ -24,16 +24,82 @@ const tools = {
 } as const satisfies Record<string, readonly ProjectRole[]>;
 
 const projectIdSchema = z.string().uuid();
+const MCP_PROTOCOL_VERSION = "2025-06-18";
 const rpcRequestSchema = z.object({
- jsonrpc: z.literal("2.0"),
- id: z.union([z.string(), z.number(), z.null()]),
- method: z.string(),
- params: z.record(z.string(), z.unknown()).optional(),
+	jsonrpc: z.literal("2.0"),
+	// Notifications carry no id; requests must have one. Enforced below.
+	id: z.union([z.string(), z.number(), z.null()]).optional(),
+	method: z.string(),
+	params: z.record(z.string(), z.unknown()).optional(),
 });
 const toolCallSchema = z.object({
- name: z.string(),
- arguments: z.record(z.string(), z.unknown()).default({}),
+	name: z.string(),
+	arguments: z.record(z.string(), z.unknown()).default({}),
 });
+
+const toolInputSchemas: Record<ToolName, Record<string, unknown>> = {
+	list_issues: {
+		type: "object",
+		properties: {
+			projectId: { type: "string", format: "uuid" },
+			status: { type: "string", enum: ["backlog", "in_progress", "in_qa", "verified", "rejected"] },
+			severity: { type: "string", enum: ["low", "medium", "high", "critical"] },
+			search: { type: "string", maxLength: 100 },
+			limit: { type: "integer", minimum: 1, maximum: 100 },
+			offset: { type: "integer", minimum: 0 },
+		},
+		required: ["projectId"],
+	},
+	get_issue: {
+		type: "object",
+		properties: {
+			projectId: { type: "string", format: "uuid" },
+			issueId: { type: "string", format: "uuid" },
+		},
+		required: ["projectId", "issueId"],
+	},
+	create_issue: {
+		type: "object",
+		properties: {
+			projectId: { type: "string", format: "uuid" },
+			title: { type: "string", minLength: 1, maxLength: 200 },
+			description: { type: "string", maxLength: 10000 },
+			severity: { type: "string", enum: ["low", "medium", "high", "critical"] },
+		},
+		required: ["projectId", "title"],
+	},
+	update_issue: {
+		type: "object",
+		properties: {
+			projectId: { type: "string", format: "uuid" },
+			issueId: { type: "string", format: "uuid" },
+			title: { type: "string", minLength: 1, maxLength: 200 },
+			description: { type: ["string", "null"], maxLength: 10000 },
+			severity: { type: "string", enum: ["low", "medium", "high", "critical"] },
+		},
+		required: ["projectId", "issueId"],
+	},
+	change_status: {
+		type: "object",
+		properties: {
+			projectId: { type: "string", format: "uuid" },
+			issueId: { type: "string", format: "uuid" },
+			status: { type: "string", enum: ["backlog", "in_progress", "in_qa", "verified", "rejected"] },
+			note: { type: "string", maxLength: 1000 },
+		},
+		required: ["projectId", "issueId", "status"],
+	},
+	assign_issue: {
+		type: "object",
+		properties: {
+			projectId: { type: "string", format: "uuid" },
+			issueId: { type: "string", format: "uuid" },
+			developerAssigneeIds: { type: "array", items: { type: "string", format: "uuid" }, maxItems: 100 },
+			qaAssigneeIds: { type: "array", items: { type: "string", format: "uuid" }, maxItems: 100 },
+		},
+		required: ["projectId", "issueId"],
+	},
+};
 
 type RpcRequest = z.infer<typeof rpcRequestSchema>;
 type ToolName = keyof typeof tools;
@@ -46,7 +112,10 @@ function parseInput<T>(schema: z.ZodType<T>, input: unknown): T {
 }
 
 function toolDefinitions() {
-	return Object.keys(tools).map((name) => ({ name }));
+	return Object.keys(tools).map((name) => ({
+		name,
+		inputSchema: toolInputSchemas[name as ToolName],
+	}));
 }
 
 function roleIsAllowed(roles: readonly ProjectRole[], role: ProjectRole) {
@@ -130,6 +199,23 @@ export async function mcpRoutes(fastify: FastifyInstance) {
   }
 
   const body = parsed.data;
+  // Notifications (no id) must not receive a JSON-RPC response.
+  if (body.id === undefined) {
+  	return reply.status(202).send();
+  }
+  if (body.method === "initialize") {
+  	const requestedVersion =
+    typeof body.params?.protocolVersion === "string" ? body.params.protocolVersion : undefined;
+  	return reply.send({
+    jsonrpc: "2.0",
+    id: body.id,
+    result: {
+     protocolVersion: requestedVersion ?? MCP_PROTOCOL_VERSION,
+     capabilities: { tools: {} },
+     serverInfo: { name: "veridex-mcp", version: "0.1.0" },
+    },
+   });
+  }
   if (body.method === "tools/list") {
    return reply.send({
     jsonrpc: "2.0",
@@ -238,7 +324,11 @@ async function callTool(
     }),
     args,
    );
-   return updateIssue(fastify.db, common.projectId, input.issueId, userId, input);
+   return updateIssue(fastify.db, common.projectId, input.issueId, userId, {
+    title: input.title,
+    description: input.description,
+    severity: input.severity,
+   });
   }
   case "change_status": {
    const input = parseInput(
@@ -264,8 +354,8 @@ async function callTool(
    const input = parseInput(
     z.object({
      issueId: z.string().uuid(),
-     developerAssigneeIds: z.array(z.string().uuid()).max(100).default([]),
-     qaAssigneeIds: z.array(z.string().uuid()).max(100).default([]),
+     developerAssigneeIds: z.array(z.string().uuid()).max(100).optional(),
+     qaAssigneeIds: z.array(z.string().uuid()).max(100).optional(),
     }),
     args,
    );
@@ -277,8 +367,8 @@ async function callTool(
     input.developerAssigneeIds,
     input.qaAssigneeIds,
     "mcp",
-		);
-	}
+   );
+  }
 	}
 	throw new ValidationError({ name: "Unknown tool" });
 }

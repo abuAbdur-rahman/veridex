@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireProjectRole } from "../lib/auth.js";
 import { ValidationError } from "../lib/errors.js";
 import { createComment, deleteComment, listComments, updateComment } from "../services/comment.service.js";
+import { broadcast } from "../ws/broadcaster.js";
 
 const paramsSchema = z.object({ projectId: z.string().uuid(), issueId: z.string().uuid() });
 const commentParamsSchema = z.object({ projectId: z.string().uuid(), commentId: z.string().uuid() });
@@ -27,20 +28,34 @@ export async function commentRoutes(fastify: FastifyInstance) {
 		const { projectId, issueId } = parseInput(paramsSchema, request.params);
 		const { session } = await requireProjectRole(request, projectId, roles);
 		const { body } = parseInput(bodySchema, request.body);
-		return reply.status(201).send(await createComment(fastify.db, projectId, issueId, session.user.id, body));
+		const comment = await createComment(fastify.db, projectId, issueId, session.user.id, body);
+		broadcast(projectId, {
+			type: "comment:created",
+			payload: { commentId: comment.id, issueId: comment.issueId, projectId },
+		});
+		return reply.status(201).send(comment);
 	});
 
 	fastify.patch("/api/projects/:projectId/comments/:commentId", async (request) => {
 		const { projectId, commentId } = parseInput(commentParamsSchema, request.params);
 		const { session } = await requireProjectRole(request, projectId, roles);
 		const { body } = parseInput(bodySchema, request.body);
-		return updateComment(fastify.db, projectId, commentId, session.user.id, body);
+		const comment = await updateComment(fastify.db, projectId, commentId, session.user.id, body);
+		broadcast(projectId, {
+			type: "comment:updated",
+			payload: { commentId: comment.id, issueId: comment.issueId, projectId },
+		});
+		return comment;
 	});
 
 	fastify.delete("/api/projects/:projectId/comments/:commentId", async (request, reply) => {
 		const { projectId, commentId } = parseInput(commentParamsSchema, request.params);
 		const { session } = await requireProjectRole(request, projectId, roles);
-		await deleteComment(fastify.db, projectId, commentId, session.user.id);
+		const deleted = await deleteComment(fastify.db, projectId, commentId, session.user.id);
+		broadcast(projectId, {
+			type: "comment:deleted",
+			payload: { commentId: deleted.id, issueId: deleted.issueId, projectId },
+		});
 		return reply.status(204).send();
 	});
 }

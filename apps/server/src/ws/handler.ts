@@ -7,6 +7,7 @@ import { projectMember } from "../db/schema/project.js";
 import { broadcast, joinRoom, leaveRoom } from "./broadcaster.js";
 
 const PING_MIN_INTERVAL_MS = 5_000;
+const REVALIDATION_INTERVAL_MS = 60_000;
 
 function toHeaders(headers: FastifyRequest["headers"]): Headers {
 	const result = new Headers();
@@ -86,6 +87,60 @@ export async function websocketHandler(
 	joinRoom(projectId, socket);
 	let lastPingAt = 0;
 
+	// Revalidates session and membership without waiting for a client ping so
+	// revoked access cannot linger on a silent connection.
+	const revalidateConnection = async (): Promise<void> => {
+		if (socket.readyState !== WebSocket.OPEN) return;
+		const refreshed = await request.server.auth.api
+			.getSession({ headers: toHeaders(request.headers) })
+			.catch(() => null);
+		if (!refreshed) {
+			if (socket.readyState === WebSocket.OPEN) {
+				try {
+					socket.send(JSON.stringify({ type: "auth:expired" }));
+				} catch (error) {
+					request.log.error(error);
+				}
+			}
+			socket.close(4001, "Session expired");
+			return;
+		}
+
+		let stillMember: { userId: string } | undefined;
+		try {
+			[stillMember] = await request.server.db
+				.select({ userId: projectMember.userId })
+				.from(projectMember)
+				.where(
+					and(
+						eq(projectMember.projectId, projectId),
+						eq(projectMember.userId, refreshed.user.id),
+					),
+				)
+				.limit(1);
+		} catch (error) {
+			request.log.error(error);
+			socket.close(1011, "Internal server error");
+			return;
+		}
+		if (!stillMember) {
+			socket.close(4003, "Not a project member");
+			return;
+		}
+
+		if (socket.readyState !== WebSocket.OPEN) return;
+		try {
+			socket.send(JSON.stringify({ type: "pong" }));
+		} catch (error) {
+			request.log.error(error);
+			socket.close(1011, "Internal server error");
+		}
+	};
+
+	const revalidationTimer = setInterval(() => {
+		void revalidateConnection();
+	}, REVALIDATION_INTERVAL_MS);
+
 	socket.on("message", (data) => {
 		void (async () => {
 			let message: unknown;
@@ -99,55 +154,12 @@ export async function websocketHandler(
 			const now = Date.now();
 			if (now - lastPingAt < PING_MIN_INTERVAL_MS) return;
 			lastPingAt = now;
-
-			const refreshed = await request.server.auth.api
-				.getSession({ headers: toHeaders(request.headers) })
-				.catch(() => null);
-			if (!refreshed) {
-				if (socket.readyState === WebSocket.OPEN) {
-					try {
-						socket.send(JSON.stringify({ type: "auth:expired" }));
-					} catch (error) {
-						request.log.error(error);
-					}
-				}
-				socket.close(4001, "Session expired");
-				return;
-			}
-
-			let stillMember: { userId: string } | undefined;
-			try {
-				[stillMember] = await request.server.db
-					.select({ userId: projectMember.userId })
-					.from(projectMember)
-					.where(
-						and(
-							eq(projectMember.projectId, projectId),
-							eq(projectMember.userId, refreshed.user.id),
-						),
-					)
-					.limit(1);
-			} catch (error) {
-				request.log.error(error);
-				socket.close(1011, "Internal server error");
-				return;
-			}
-			if (!stillMember) {
-				socket.close(4003, "Not a project member");
-				return;
-			}
-
-			if (socket.readyState !== WebSocket.OPEN) return;
-			try {
-				socket.send(JSON.stringify({ type: "pong" }));
-			} catch (error) {
-				request.log.error(error);
-				socket.close(1011, "Internal server error");
-			}
+			await revalidateConnection();
 		})();
 	});
 
 	socket.on("close", () => {
+		clearInterval(revalidationTimer);
 		leaveRoom(projectId, socket);
 	});
 }

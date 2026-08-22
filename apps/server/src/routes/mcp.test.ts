@@ -72,8 +72,46 @@ describe("MCP route", () => {
 		});
 
 		expect(response.statusCode).toBe(200);
-		expect(response.json().result.tools).toHaveLength(6);
+		const tools = response.json().result.tools;
+		expect(tools).toHaveLength(6);
+		for (const tool of tools) {
+			expect(tool.inputSchema).toMatchObject({ type: "object" });
+			expect(tool.inputSchema.required).toContain("projectId");
+		}
 		expect(authenticateApiToken).toHaveBeenCalledWith(expect.anything(), "Bearer vrx_token");
+	});
+
+	it("answers the initialize handshake with protocol version and capabilities", async () => {
+		const response = await (await createApp(createDb(undefined))).inject({
+			method: "POST",
+			url: "/mcp",
+			headers: { authorization: "Bearer vrx_token" },
+			payload: {
+				jsonrpc: "2.0",
+				id: 1,
+				method: "initialize",
+				params: { protocolVersion: "2025-06-18", capabilities: {} },
+			},
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.json().result).toMatchObject({
+			protocolVersion: "2025-06-18",
+			capabilities: { tools: {} },
+			serverInfo: { name: "veridex-mcp" },
+		});
+	});
+
+	it("accepts id-less notifications without a JSON-RPC response", async () => {
+		const response = await (await createApp(createDb(undefined))).inject({
+			method: "POST",
+			url: "/mcp",
+			headers: { authorization: "Bearer vrx_token" },
+			payload: { jsonrpc: "2.0", method: "notifications/initialized" },
+		});
+
+		expect(response.statusCode).toBe(202);
+		expect(response.body).toBe("");
 	});
 
 	it("returns a tool error when the project role is not allowed", async () => {
