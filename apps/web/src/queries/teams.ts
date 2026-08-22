@@ -1,5 +1,5 @@
-import { queryOptions, useQuery } from "@tanstack/react-query";
-import { listTeamMembers, listTeams } from "@/api/teams";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { listPendingTeamInvites, listTeamMembers, listTeams, revokeTeamInvite } from "@/api/teams";
 
 export const teamsQueryKey = ["teams"] as const;
 
@@ -20,10 +20,32 @@ export function teamMembersQueryOptions(teamId: string) {
 	});
 }
 
+export function pendingTeamInvitesQueryOptions(teamId: string) {
+	return queryOptions({
+		queryKey: ["teams", teamId, "invites"] as const,
+		queryFn: () => listPendingTeamInvites(teamId),
+		staleTime: 30_000,
+		retry: false,
+		enabled: Boolean(teamId),
+	});
+}
+
 export function useTeams() {
 	return useQuery(teamsQueryOptions);
 }
 
 export function useTeamMembers(teamId: string) {
 	return useQuery(teamMembersQueryOptions(teamId));
+}
+
+export function usePendingTeamInvites(teamId: string) {
+	return useQuery(pendingTeamInvitesQueryOptions(teamId));
+}
+
+export function useRevokeTeamInvite(teamId: string) {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: (inviteId: string) => revokeTeamInvite(teamId, inviteId),
+		onSuccess: () => queryClient.invalidateQueries({ queryKey: ["teams", teamId, "invites"] }),
+	});
 }

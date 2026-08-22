@@ -1,11 +1,11 @@
-import { Check, Copy, MailPlus, Users } from "lucide-react";
+import { Check, Copy, MailPlus, Trash2, Users } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app/PageHeader";
 import { SectionLabel } from "@/components/app/FormField";
 import { ApiError } from "@/api/client";
 import { createTeamInvite } from "@/api/teams";
-import { useTeamMembers, useTeams } from "@/queries/teams";
+import { usePendingTeamInvites, useRevokeTeamInvite, useTeamMembers, useTeams } from "@/queries/teams";
 
 interface TeamSettingsScreenProps {
 	teamId: string;
@@ -14,6 +14,8 @@ interface TeamSettingsScreenProps {
 export function TeamSettingsScreen({ teamId }: TeamSettingsScreenProps) {
 	const { data: teams } = useTeams();
 	const { data: members, isPending: membersPending, error: membersError } = useTeamMembers(teamId);
+	const invitesQuery = usePendingTeamInvites(teamId);
+	const revokeMutation = useRevokeTeamInvite(teamId);
 	const teamName = teams?.find((team) => team.id === teamId)?.name ?? "Team";
 	const [email, setEmail] = useState("");
 	const [status, setStatus] = useState("");
@@ -111,10 +113,55 @@ export function TeamSettingsScreen({ teamId }: TeamSettingsScreenProps) {
 						</button>
 					</div>
 					<p className="mt-2 text-xs text-[var(--ink-soft)]">
-						The server does not expose pending-invite listing or revoke operations.
+						Invite links expire automatically. Revoke an unused link to prevent it from being accepted.
 					</p>
 				</section>
 			) : null}
+			<section aria-label="Pending invites">
+				<SectionLabel>Pending invites</SectionLabel>
+				{invitesQuery.isPending ? (
+					<p className="mt-3 rounded-[10px] border border-[var(--line)] bg-[var(--surface)] px-4 py-6 text-center text-[13px] text-[var(--ink-soft)]">
+						Loading pending invites...
+					</p>
+				) : invitesQuery.isError ? (
+					<p role="alert" className="mt-3 rounded-[10px] border border-[var(--block)] bg-[var(--block-bg)] px-4 py-3 text-sm text-[var(--block)]">
+						{invitesQuery.error instanceof ApiError ? invitesQuery.error.message : "Could not load pending invites."}
+					</p>
+				) : invitesQuery.data?.length === 0 ? (
+					<p className="mt-3 rounded-[10px] border border-[var(--line)] bg-[var(--surface)] px-4 py-6 text-center text-[13px] text-[var(--ink-soft)]">
+						No pending invites.
+					</p>
+				) : (
+					<ul className="mt-3 overflow-hidden rounded-[10px] border border-[var(--line)] bg-[var(--surface)]">
+						{invitesQuery.data?.map((invite) => (
+							<li key={invite.id} className="flex flex-wrap items-center gap-3 border-b border-[var(--line-soft)] px-4 py-3 last:border-b-0">
+								<span className="min-w-0 flex-1">
+									<span className="block truncate text-sm font-medium text-[var(--ink)]">{invite.email}</span>
+									<span className="block font-[var(--mono)] text-xs text-[var(--ink-soft)]">
+										{invite.teamRole} · Expires {new Date(invite.expiresAt).toLocaleDateString()}
+									</span>
+								</span>
+								<button
+									type="button"
+									aria-label={`Revoke invite for ${invite.email}`}
+									disabled={revokeMutation.isPending}
+									onClick={() => {
+										if (!window.confirm(`Revoke invite for ${invite.email}?`)) return;
+										void revokeMutation.mutateAsync(invite.id).then(
+											() => setStatus(`Invite for ${invite.email} revoked.`),
+											(error: unknown) =>
+												setStatus(error instanceof Error ? error.message : "Could not revoke invite."),
+										);
+									}}
+									className="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-[var(--ink-soft)] hover:bg-[var(--block-bg)] hover:text-[var(--block)] disabled:opacity-60"
+								>
+									<Trash2 className="size-3.5" aria-hidden="true" /> Revoke
+								</button>
+							</li>
+						))}
+					</ul>
+				)}
+			</section>
 			<section aria-label="Members">
 				<SectionLabel>
 					<Users className="size-3.5" aria-hidden="true" /> Members

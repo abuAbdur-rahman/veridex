@@ -58,8 +58,11 @@ Implemented client integrations:
 
 - **Auth/session:** Social sign-in/sign-out, local development test-user login through `POST /api/dev/test-session` on loopback development servers, `GET /api/me`, `GET /api/users/check-username`, and `POST /api/onboarding/complete`.
 - **Teams:** `GET /api/teams`, `POST /api/teams`, `GET /api/teams/:teamId/members`.
-- **Invites:** `POST /api/teams/:teamId/invites`, `GET /api/invites/:token/validate`, `POST /api/invites/:token/accept`.
+- **Invites:** create, validate, accept, list pending, and revoke team invites through the implemented invite endpoints.
+- **Projects and issues:** project membership, issue CRUD, assignments, status history, issue images, spreadsheet import, and project-scoped WebSocket refresh are server-backed.
+- **Issue comments:** list and create comments from issue detail; server comment rows expose `authorId`, so the UI resolves names from the current project-member projection and falls back to the ID.
+- **MCP profile:** API-token management plus access-summary and recent-activity views are server-backed. The manual MCP JSON-RPC endpoint is available at `/mcp`; the SDK transport migration remains a server follow-up.
 
-Project, issue, import, WebSocket, API-token, and MCP flows remain fixture-backed. Team settings and sidebar use server-backed teams; invite accept route uses real validation/acceptance; login preserves invite redirect via search param. The local test-user button is hostname-gated in the browser, while the server's development flag and loopback guard remain authoritative.
+Fixture state remains limited to workflows whose server contracts are not implemented. Team settings and sidebar use server-backed teams; login preserves invite redirect via search param. The local test-user button is hostname-gated in the browser, while the server's development flag and loopback guard remain authoritative.
 
 Check `.agents/states/server.md` before wiring a screen. A rendered frontend route does not imply a matching backend endpoint exists.

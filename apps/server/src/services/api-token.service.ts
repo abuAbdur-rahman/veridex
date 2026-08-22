@@ -1,11 +1,43 @@
 import { createHash, randomBytes } from "node:crypto";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, or } from "drizzle-orm";
 import type { Database } from "../db/client.js";
 import { apiTokens } from "../db/schema/index.js";
-import { NotFoundError } from "../lib/errors.js";
+import { NotFoundError, UnauthorizedError } from "../lib/errors.js";
 
-function hashToken(token: string) {
+export function hashToken(token: string) {
 	return createHash("sha256").update(token).digest("hex");
+}
+
+export async function authenticateApiToken(
+	db: Database,
+	authorizationHeader: string | undefined,
+) {
+	if (!authorizationHeader?.startsWith("Bearer ")) throw new UnauthorizedError();
+	const token = authorizationHeader.slice("Bearer ".length).trim();
+	if (!/^vrx_[A-Za-z0-9_-]{32}$/.test(token)) throw new UnauthorizedError();
+
+	const [apiToken] = await db
+		.select({
+			id: apiTokens.id,
+			userId: apiTokens.userId,
+			expiresAt: apiTokens.expiresAt,
+		})
+		.from(apiTokens)
+		.where(
+			and(
+				eq(apiTokens.tokenHash, hashToken(token)),
+				isNull(apiTokens.revokedAt),
+				or(isNull(apiTokens.expiresAt), gt(apiTokens.expiresAt, new Date())),
+			),
+		)
+		.limit(1);
+
+	if (!apiToken) throw new UnauthorizedError();
+	await db
+		.update(apiTokens)
+		.set({ lastUsedAt: new Date() })
+		.where(eq(apiTokens.id, apiToken.id));
+	return { userId: apiToken.userId, tokenId: apiToken.id };
 }
 
 export function listApiTokens(db: Database, userId: string) {

@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/app/PageHeader";
 import { SectionLabel } from "@/components/app/FormField";
 import { NewTokenModal } from "@/components/screens/NewTokenModal";
 import { useApiTokens, useCreateApiToken, useRevokeApiToken } from "@/queries/tokens";
+import { useMcpAccessSummary, useMcpActivity } from "@/queries/mcp";
 
 const endpoint = import.meta.env.VITE_MCP_URL as string | undefined;
 
@@ -11,6 +12,8 @@ export function McpScreen() {
 	const tokensQuery = useApiTokens();
 	const createMutation = useCreateApiToken();
 	const revokeMutation = useRevokeApiToken();
+	const accessQuery = useMcpAccessSummary();
+	const activityQuery = useMcpActivity();
 	const [modalOpen, setModalOpen] = useState(false);
 	const [rawToken, setRawToken] = useState<string | null>(null);
 	const [status, setStatus] = useState("");
@@ -84,6 +87,39 @@ export function McpScreen() {
 						</p>
 					)}
 				</div>
+			</section>
+			<section aria-label="Project access">
+				<SectionLabel>Project access</SectionLabel>
+				{accessQuery.isPending ? <p className="mt-3 text-sm text-[var(--ink-soft)]">Loading access...</p> : null}
+				{accessQuery.isError ? <p role="alert" className="mt-3 text-sm text-[var(--block)]">{accessQuery.error.message}</p> : null}
+				{accessQuery.data?.summary.length === 0 ? <p className="mt-3 text-sm text-[var(--ink-soft)]">No project access.</p> : null}
+				{accessQuery.data?.summary.length ? (
+					<ul className="mt-3 overflow-hidden rounded-[10px] border border-[var(--line)] bg-[var(--surface)]">
+						{accessQuery.data.summary.map((access) => (
+							<li key={access.projectId} className="flex flex-wrap items-center gap-3 border-b border-[var(--line-soft)] px-4 py-3 last:border-b-0">
+								<span className="min-w-0 flex-1"><span className="block text-sm font-medium">{access.projectName}</span><span className="font-[var(--mono)] text-xs text-[var(--ink-soft)]">{access.role} · {access.totalTools} tools</span></span>
+								<span className="text-xs text-[var(--ink-soft)]">{access.availableTools.join(", ")}</span>
+							</li>
+						))}
+					</ul>
+				) : null}
+			</section>
+			<section aria-label="MCP activity">
+				<SectionLabel>Recent MCP activity</SectionLabel>
+				{activityQuery.isPending ? <p className="mt-3 text-sm text-[var(--ink-soft)]">Loading activity...</p> : null}
+				{activityQuery.isError ? <p role="alert" className="mt-3 text-sm text-[var(--block)]">{activityQuery.error.message}</p> : null}
+				{activityQuery.data?.activity.length === 0 ? <p className="mt-3 text-sm text-[var(--ink-soft)]">No MCP activity yet.</p> : null}
+				{activityQuery.data?.activity.length ? (
+					<ul className="mt-3 overflow-hidden rounded-[10px] border border-[var(--line)] bg-[var(--surface)]">
+						{activityQuery.data.activity.map((entry) => (
+							<li key={entry.id} className="border-b border-[var(--line-soft)] px-4 py-3 last:border-b-0">
+								<p className="text-sm font-medium">{entry.ticketRef} · {entry.title}</p>
+								<p className="mt-1 font-[var(--mono)] text-xs text-[var(--ink-soft)]">{entry.fromStatus ?? "new"} → {entry.toStatus}{entry.changedAt ? ` · ${new Date(entry.changedAt).toLocaleString()}` : ""}</p>
+								{entry.note ? <p className="mt-1 text-xs text-[var(--ink-soft)]">{entry.note}</p> : null}
+							</li>
+						))}
+					</ul>
+				) : null}
 			</section>
 			<section aria-label="Your tokens">
 				<div className="flex items-center justify-between">
