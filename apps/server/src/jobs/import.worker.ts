@@ -13,6 +13,7 @@ import {
 } from "../db/schema/index.js";
 import type { IssueStatus } from "../services/issue.service.js";
 import { expectedRoleForStatus } from "../services/import.service.js";
+import { broadcast } from "../ws/broadcaster.js";
 
 const THEME_COLORS = [
 	"FFFFFF",
@@ -432,7 +433,7 @@ export function registerImportWorker(deps: ImportWorkerDeps) {
 					const titleKey = title.toLowerCase();
 
 					try {
-						const inserted = await db.transaction(async (tx) => {
+						const insertedId = await db.transaction(async (tx) => {
 							const [existingIssue] = await tx
 								.select({ id: issues.id })
 								.from(issues)
@@ -519,12 +520,16 @@ export function registerImportWorker(deps: ImportWorkerDeps) {
 								toStatus: status,
 								source: "import",
 							});
-							return true;
+							return issue.id;
 						});
 
-						if (inserted) {
+						if (insertedId) {
 							seenTitles.add(titleKey);
 							imported++;
+							broadcast(importJob.projectId, {
+								type: "issue:created",
+								payload: { issueId: insertedId, projectId: importJob.projectId },
+							});
 						}
 					} catch (err) {
 						console.error("Import row failed", err);

@@ -9,6 +9,7 @@ import { corsPlugin } from "./plugins/cors.js";
 import { rateLimitPlugin } from "./plugins/rate-limit.js";
 import { swaggerPlugin, swaggerUiPlugin } from "./plugins/swagger.js";
 import { authPlugin } from "./plugins/auth.js";
+import { websocketPlugin } from "./plugins/websocket.js";
 import { createAuth } from "./auth/index.js";
 import { createDb, type Database } from "./db/client.js";
 import { healthRoutes } from "./routes/health.js";
@@ -25,6 +26,9 @@ import type { Queue } from "./jobs/queue.js";
 import { registerImportWorker } from "./jobs/import.worker.js";
 import { registerVerifiedIssueCleanupWorker } from "./jobs/verified-issue-cleanup.worker.js";
 import { devAuthRoutes } from "./routes/dev-auth.js";
+import { apiTokenRoutes } from "./routes/api-tokens.js";
+import { commentRoutes } from "./routes/comments.js";
+import { mcpRoutes } from "./routes/mcp.js";
 
 export interface BuildAppOptions {
 	db?: Database;
@@ -168,6 +172,7 @@ export function buildApp(
 		});
 	}
 	app.register(authPlugin);
+	app.register(websocketPlugin);
 	app.register(multipart, {
 		limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 0, parts: 1 },
 	});
@@ -180,6 +185,9 @@ export function buildApp(
 	app.register(issueImageRoutes);
 
 	app.register(importRoutes);
+	app.register(apiTokenRoutes);
+	app.register(commentRoutes);
+	app.register(mcpRoutes);
 	app.register(devAuthRoutes);
 
 	if (options.queue) {

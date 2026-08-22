@@ -12,6 +12,7 @@ import {
 	updateIssue,
 	updateStatus,
 } from "../services/issue.service.js";
+import { broadcast } from "../ws/broadcaster.js";
 
 const projectParamsSchema = z.object({ projectId: z.string().uuid() });
 const issueParamsSchema = z.object({ issueId: z.string().uuid() });
@@ -120,6 +121,10 @@ export async function issueRoutes(fastify: FastifyInstance) {
 				session.user.id,
 				input,
 			);
+			broadcast(projectId, {
+				type: "issue:created",
+				payload: { issueId: issue.id, projectId },
+			});
 			return reply.status(201).send(issue);
 		},
 	);
@@ -173,13 +178,18 @@ export async function issueRoutes(fastify: FastifyInstance) {
 			const session = await requireSession(request);
 			const { issueId } = parseInput(issueParamsSchema, request.params);
 			const input = parseInput(updateIssueSchema, request.body);
-			return updateIssue(
+			const issue = await updateIssue(
 				fastify.db,
 				projectId,
 				issueId,
 				session.user.id,
 				input,
 			);
+			broadcast(projectId, {
+				type: "issue:updated",
+				payload: { issueId: issue.id, projectId },
+			});
+			return issue;
 		},
 	);
 
@@ -191,7 +201,7 @@ export async function issueRoutes(fastify: FastifyInstance) {
 			await requireSession(request);
 			const { issueId } = parseInput(issueParamsSchema, request.params);
 			const input = parseInput(updateStatusSchema, request.body);
-			return updateStatus(
+			const updated = await updateStatus(
 				fastify.db,
 				projectId,
 				issueId,
@@ -201,6 +211,16 @@ export async function issueRoutes(fastify: FastifyInstance) {
 				input.note,
 				membership.role,
 			);
+			broadcast(projectId, {
+				type: "issue:status_changed",
+				payload: {
+					issueId: updated.id,
+					projectId,
+					toStatus: updated.status,
+					source: "web",
+				},
+			});
+			return updated;
 		},
 	);
 
@@ -212,7 +232,7 @@ export async function issueRoutes(fastify: FastifyInstance) {
 			const session = await requireSession(request);
 			const { issueId } = parseInput(issueParamsSchema, request.params);
 			const input = parseInput(assignIssueSchema, request.body);
-			return assignIssue(
+			const issue = await assignIssue(
 				fastify.db,
 				projectId,
 				issueId,
@@ -221,6 +241,11 @@ export async function issueRoutes(fastify: FastifyInstance) {
 				input.qaAssigneeIds,
 				"web",
 			);
+			broadcast(projectId, {
+				type: "issue:assigned",
+				payload: { issueId: issue.id, projectId },
+			});
+			return issue;
 		},
 	);
 
@@ -253,6 +278,10 @@ export async function issueRoutes(fastify: FastifyInstance) {
 			const session = await requireSession(request);
 			const { issueId } = parseInput(issueParamsSchema, request.params);
 			await deleteIssue(fastify.db, projectId, issueId, session.user.id);
+			broadcast(projectId, {
+				type: "issue:deleted",
+				payload: { issueId, projectId },
+			});
 			return reply.status(204).send();
 		},
 	);

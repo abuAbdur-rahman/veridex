@@ -4,11 +4,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppError, ForbiddenError, UnauthorizedError } from "../lib/errors.js";
 import { inviteRoutes } from "./invites.js";
 
-const { requireSession, requireTeamRole, createInvite, validateInvite, acceptInvite } =
+const {
+	requireSession,
+	requireTeamRole,
+	createInvite,
+	listPendingInvites,
+	revokePendingInvite,
+	validateInvite,
+	acceptInvite,
+} =
 	vi.hoisted(() => ({
 		requireSession: vi.fn(),
 		requireTeamRole: vi.fn(),
 		createInvite: vi.fn(),
+		listPendingInvites: vi.fn(),
+		revokePendingInvite: vi.fn(),
 		validateInvite: vi.fn(),
 		acceptInvite: vi.fn(),
 	}));
@@ -16,6 +26,8 @@ const { requireSession, requireTeamRole, createInvite, validateInvite, acceptInv
 vi.mock("../lib/auth.js", () => ({ requireSession, requireTeamRole }));
 vi.mock("../services/invite.service.js", () => ({
 	createInvite,
+	listPendingInvites,
+	revokePendingInvite,
 	validateInvite,
 	acceptInvite,
 }));
@@ -62,6 +74,34 @@ afterEach(async () => {
 });
 
 describe("invite routes", () => {
+	it("lists pending invites for team admins", async () => {
+		const pending = [{ id: "invite-1", email: "member@example.com" }];
+		listPendingInvites.mockResolvedValue(pending);
+
+		const response = await (await createApp()).inject({
+			method: "GET",
+			url: `/api/teams/${teamId}/invites`,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.json()).toEqual(pending);
+		expect(requireTeamRole).toHaveBeenCalledWith(expect.anything(), teamId, ["owner", "admin"]);
+		expect(listPendingInvites).toHaveBeenCalledWith(expect.anything(), teamId);
+	});
+
+	it("hard-deletes a pending invite with 204", async () => {
+		revokePendingInvite.mockResolvedValue(undefined);
+		const inviteId = "22222222-2222-4222-8222-222222222222";
+
+		const response = await (await createApp()).inject({
+			method: "DELETE",
+			url: `/api/teams/${teamId}/invites/${inviteId}`,
+		});
+
+		expect(response.statusCode).toBe(204);
+		expect(revokePendingInvite).toHaveBeenCalledWith(expect.anything(), teamId, inviteId);
+	});
+
 	it("normalizes invite email and returns the raw token once with 201", async () => {
 		const created = {
 			id: "invite-1",
