@@ -20,6 +20,7 @@ import {
 	updateIssue,
 	updateStatus,
 } from "../services/issue.service.js";
+import { broadcast } from "../ws/broadcaster.js";
 
 const tools = {
 	list_issues: ["tester", "qa", "dev", "admin"],
@@ -226,8 +227,25 @@ export async function mcpRoutes(fastify: FastifyInstance) {
 		await server.connect(transport);
 
 		reply.hijack();
-		await transport.handleRequest(request.raw, reply.raw, request.body);
-		void server.close().catch(() => {});
+		try {
+			await transport.handleRequest(request.raw, reply.raw, request.body);
+		} catch (error) {
+			request.log.error(error, "MCP transport request failed");
+			if (!reply.raw.headersSent) {
+				reply.raw.writeHead(500, { "content-type": "application/json" });
+				reply.raw.end(
+					JSON.stringify({
+						jsonrpc: "2.0",
+						error: { code: -32603, message: "Internal error" },
+						id: null,
+					}),
+				);
+			} else {
+				reply.raw.destroy();
+			}
+		} finally {
+			void server.close().catch(() => {});
+		}
 	});
 
 	fastify.get("/mcp", async (request, reply) => {
@@ -293,8 +311,8 @@ async function callTool(
 			const input = parseInput(z.object({ issueId: z.string().uuid() }), args);
 			return getIssue(fastify.db, common.projectId, input.issueId, userId);
 		}
-		case "create_issue":
-			return createIssue(
+		case "create_issue": {
+			const issue = await createIssue(
 				fastify.db,
 				common.projectId,
 				userId,
@@ -307,6 +325,12 @@ async function callTool(
 					args,
 				),
 			);
+			broadcast(common.projectId, {
+				type: "issue:created",
+				payload: { issueId: issue.id, projectId: common.projectId },
+			});
+			return issue;
+		}
 		case "update_issue": {
 			const input = parseInput(
 				z.object({
@@ -317,11 +341,22 @@ async function callTool(
 				}),
 				args,
 			);
-			return updateIssue(fastify.db, common.projectId, input.issueId, userId, {
-				title: input.title,
-				description: input.description,
-				severity: input.severity,
+			const issue = await updateIssue(
+				fastify.db,
+				common.projectId,
+				input.issueId,
+				userId,
+				{
+					title: input.title,
+					description: input.description,
+					severity: input.severity,
+				},
+			);
+			broadcast(common.projectId, {
+				type: "issue:updated",
+				payload: { issueId: issue.id, projectId: common.projectId },
 			});
+			return issue;
 		}
 		case "change_status": {
 			const input = parseInput(
@@ -332,7 +367,7 @@ async function callTool(
 				}),
 				args,
 			);
-			return updateStatus(
+			const updated = await updateStatus(
 				fastify.db,
 				common.projectId,
 				input.issueId,
@@ -342,6 +377,16 @@ async function callTool(
 				input.note,
 				membership.role,
 			);
+			broadcast(common.projectId, {
+				type: "issue:status_changed",
+				payload: {
+					issueId: updated.id,
+					projectId: common.projectId,
+					toStatus: updated.status,
+					source: "mcp",
+				},
+			});
+			return updated;
 		}
 		case "assign_issue": {
 			const input = parseInput(
@@ -352,7 +397,7 @@ async function callTool(
 				}),
 				args,
 			);
-			return assignIssue(
+			const issue = await assignIssue(
 				fastify.db,
 				common.projectId,
 				input.issueId,
@@ -361,6 +406,11 @@ async function callTool(
 				input.qaAssigneeIds,
 				"mcp",
 			);
+			broadcast(common.projectId, {
+				type: "issue:assigned",
+				payload: { issueId: issue.id, projectId: common.projectId },
+			});
+			return issue;
 		}
 	}
 	throw new ValidationError({ name: "Unknown tool" });

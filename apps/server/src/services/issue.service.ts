@@ -557,14 +557,22 @@ export async function updateStatus(
 		effectiveStatus = "backlog";
 	}
 
-	if (effectiveStatus === "backlog" || effectiveStatus === "in_progress") {
-		if (!note?.trim()) {
-			throw new AppError(
-				"NOTE_REQUIRED",
-				"An audit note is required for backward transitions",
-				409,
-			);
-		}
+	const statusOrder: Record<IssueStatus, number> = {
+		backlog: 0,
+		in_progress: 1,
+		in_qa: 2,
+		verified: 3,
+		rejected: 4,
+	};
+	const isForward =
+		effectiveStatus === "rejected" ||
+		statusOrder[fromStatus] < statusOrder[effectiveStatus];
+	if (!isForward && !note?.trim()) {
+		throw new AppError(
+			"NOTE_REQUIRED",
+			"An audit note is required for backward transitions",
+			409,
+		);
 	}
 
 	const result = await db.transaction(async (tx) => {
@@ -579,10 +587,20 @@ export async function updateStatus(
 				closedAt: effectiveStatus === "verified" ? new Date() : null,
 			})
 			.where(
-				and(eq(issues.id, issueId), eq(issues.projectId, projectId)),
+				and(
+					eq(issues.id, issueId),
+					eq(issues.projectId, projectId),
+					eq(issues.status, fromStatus),
+				),
 			)
 			.returning();
-		if (!updated) throw new NotFoundError("Issue");
+		if (!updated) {
+			throw new AppError(
+				"STATUS_CONFLICT",
+				"Issue status changed concurrently",
+				409,
+			);
+		}
 
 		if (effectiveStatus === "rejected") {
 			await tx.delete(issueAssignments).where(eq(issueAssignments.issueId, issueId));

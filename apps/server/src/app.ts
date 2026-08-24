@@ -196,6 +196,7 @@ export function buildApp(
 			await registerImportWorker({
 				db,
 				boss: queue,
+				logger: app.log,
 			});
 			await registerVerifiedIssueCleanupWorker({
 				db,

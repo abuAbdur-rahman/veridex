@@ -106,7 +106,7 @@ export function CommentThread({
 												if (!window.confirm("Delete this comment?")) return;
 												void onDeleteComment(comment.id);
 											}}
-											className="inline-flex min-h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-[var(--ink-soft)] hover:bg-[var(--block-bg)] hover:text-[var(--block)] disabled:opacity-60"
+											className="inline-flex min-h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-[var(--ink-soft)] hover:bg-[var(--bg-alt)] hover:text-[var(--ink)] disabled:opacity-60"
 										>
 											<Trash2 className="size-3" aria-hidden="true" /> Delete
 										</button>

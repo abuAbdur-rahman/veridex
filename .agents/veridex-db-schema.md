@@ -76,7 +76,7 @@ reporterId: text('reporter_id').notNull(), // FK → auth.user.id (app-level onl
 CREATE TYPE team_role      AS ENUM ('owner', 'admin', 'member');
 CREATE TYPE project_role   AS ENUM ('dev', 'qa', 'tester', 'admin');
 CREATE TYPE issue_severity AS ENUM ('low', 'medium', 'high', 'critical');
-CREATE TYPE issue_status   AS ENUM ('backlog', 'in_progress', 'in_qa', 'verified');
+CREATE TYPE issue_status   AS ENUM ('backlog', 'in_progress', 'in_qa', 'verified', 'rejected');
 CREATE TYPE import_status  AS ENUM ('pending', 'processing', 'completed', 'failed');
 CREATE TYPE file_type      AS ENUM ('xlsx', 'csv');
 CREATE TYPE change_source  AS ENUM ('web', 'mcp', 'import');
