@@ -37,3 +37,19 @@ export function createComment(projectId: string, issueId: string, body: string) 
 		{ method: "POST", body: JSON.stringify({ body }) },
 	);
 }
+
+export function updateComment(projectId: string, commentId: string, body: string) {
+	return apiRequest(
+		`/api/projects/${encodeURIComponent(projectId)}/comments/${encodeURIComponent(commentId)}`,
+		isComment,
+		{ method: "PATCH", body: JSON.stringify({ body }) },
+	);
+}
+
+export function deleteComment(projectId: string, commentId: string) {
+	return apiRequest(
+		`/api/projects/${encodeURIComponent(projectId)}/comments/${encodeURIComponent(commentId)}`,
+		(value): value is null => value === null,
+		{ method: "DELETE" },
+	);
+}

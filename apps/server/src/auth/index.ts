@@ -33,6 +33,13 @@ export function createAuth(db: Database, environment: Environment) {
 		secret: environment.BETTER_AUTH_SECRET,
 		advanced: {
 			useSecureCookies: environment.NODE_ENV === "production",
+			database: {
+				// Veridex schemas validate user ids as UUID strings; Better Auth's
+				// default ids are alphanumeric and would fail those checks. A
+				// function is required because auth.user.id is a plain text
+				// column without a gen_random_uuid() database default.
+				generateId: () => crypto.randomUUID(),
+			},
 		},
 		emailAndPassword: {
 			enabled: environment.DEV_AUTH_ENABLED,

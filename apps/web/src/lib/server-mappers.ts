@@ -1,28 +1,20 @@
-import type { ServerIssue, ServerIssueHistory } from "@/api/issues";
+import type { ServerIssue, ServerIssueHistory, ServerMemberRef } from "@/api/issues";
 import type { ServerProject, ServerProjectMember } from "@/api/projects";
-import type { MeUser } from "@/api/session";
 import type { Issue, IssueAssignee, IssueHistoryEntry } from "@/lib/veridex-types";
 
-function person(
-	id: string | null | undefined,
-	fallback: MeUser,
-	members: ServerProjectMember[],
-): IssueAssignee | undefined {
-	if (!id) return undefined;
-	const member = members.find((item) => item.id === id);
-	const name = member?.name ?? (id === fallback.id ? fallback.name : "Unknown member");
-	const initials = name
+function assignee(ref: ServerMemberRef): IssueAssignee {
+	const initials = ref.name
 		.split(/\s+/)
 		.slice(0, 2)
 		.map((part) => part[0]?.toUpperCase() ?? "")
 		.join("")
 		.slice(0, 2);
 	return {
-		id,
-		name,
+		id: ref.id,
+		name: ref.name,
 		initials,
 		gradient: "linear-gradient(135deg, #5FC9C9, #7FA0E0)",
-		avatarUrl: member?.image ?? undefined,
+		avatarUrl: ref.image ?? undefined,
 	};
 }
 function environment(value: ServerIssue["environment"]) {
@@ -33,11 +25,7 @@ function environment(value: ServerIssue["environment"]) {
 			.join(" / ") || undefined
 	);
 }
-export function mapServerIssue(
-	value: ServerIssue,
-	user: MeUser,
-	members: ServerProjectMember[] = [],
-): Issue {
+export function mapServerIssue(value: ServerIssue): Issue {
 	return {
 		id: value.id,
 		projectId: value.projectId,
@@ -49,13 +37,9 @@ export function mapServerIssue(
 		imageUrl: value.imageUrl ?? undefined,
 		environment: environment(value.environment),
 		stepsToReproduce: value.stepsToReproduce?.split("\n").filter(Boolean),
-		reporter: person(value.reporterId, user, members)!,
-		developerAssignees: (value.developerAssigneeIds ?? [])
-			.map((id) => person(id, user, members))
-			.filter((p): p is IssueAssignee => Boolean(p)),
-		qaAssignees: (value.qaAssigneeIds ?? [])
-			.map((id) => person(id, user, members))
-			.filter((p): p is IssueAssignee => Boolean(p)),
+		reporter: value.reporter ? assignee(value.reporter) : undefined,
+		developerAssignees: (value.developerAssignees ?? []).map(assignee),
+		qaAssignees: (value.qaAssignees ?? []).map(assignee),
 		createdAt: value.createdAt ?? new Date(0).toISOString(),
 		updatedAt: value.updatedAt ?? new Date(0).toISOString(),
 	};

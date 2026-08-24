@@ -6,6 +6,7 @@ import {
 	issues,
 	project,
 	projectMember,
+	user,
 } from "../db/schema/index.js";
 import { AppError, NotFoundError } from "../lib/errors.js";
 
@@ -77,6 +78,44 @@ export type IssueWithAssignments = typeof issues.$inferSelect & {
 	developerAssigneeIds: string[];
 	qaAssigneeIds: string[];
 };
+
+export interface MemberRef {
+	id: string;
+	name: string;
+	image: string | null;
+}
+
+export type IssueWithProjection = IssueWithAssignments & {
+	reporter: MemberRef | null;
+	developerAssignees: MemberRef[];
+	qaAssignees: MemberRef[];
+};
+
+export async function getProjectMemberDirectory(
+	db: Database,
+	projectId: string,
+): Promise<Map<string, MemberRef>> {
+	const rows = await db
+		.select({ id: projectMember.userId, name: user.name, image: user.image })
+		.from(projectMember)
+		.innerJoin(user, eq(user.id, projectMember.userId))
+		.where(eq(projectMember.projectId, projectId));
+	return new Map(rows.map((row) => [row.id, row]));
+}
+
+export function withMemberProjection(
+	membersById: Map<string, MemberRef>,
+	issue: IssueWithAssignments,
+): IssueWithProjection {
+	const ref = (id: string): MemberRef =>
+		membersById.get(id) ?? { id, name: "Unknown member", image: null };
+	return {
+		...issue,
+		reporter: issue.reporterId ? ref(issue.reporterId) : null,
+		developerAssignees: issue.developerAssigneeIds.map(ref),
+		qaAssignees: issue.qaAssigneeIds.map(ref),
+	};
+}
 
 function isUniqueConflict(error: unknown, constraintName: string) {
 	return (
@@ -477,7 +516,7 @@ export async function updateStatus(
 	source: ChangeSource,
 	note?: string,
 	role?: ProjectRole,
-): Promise<typeof issues.$inferSelect> {
+): Promise<IssueWithAssignments> {
 	await verifyProjectMembership(db, projectId, changedBy);
 
 	const current = await db
@@ -528,7 +567,7 @@ export async function updateStatus(
 		}
 	}
 
-	return db.transaction(async (tx) => {
+	const result = await db.transaction(async (tx) => {
 		const [updated] = await tx
 			.update(issues)
 			.set({
@@ -562,6 +601,14 @@ export async function updateStatus(
 
 		return updated;
 	});
+	const assignments = await getAssignmentIds(db, [issueId]);
+	return {
+		...result,
+		...(assignments.get(issueId) ?? {
+			developerAssigneeIds: [],
+			qaAssigneeIds: [],
+		}),
+	};
 }
 
 export async function assignIssue(

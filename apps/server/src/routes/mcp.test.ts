@@ -67,7 +67,10 @@ describe("MCP route", () => {
 		const response = await (await createApp(createDb(undefined))).inject({
 			method: "POST",
 			url: "/mcp",
-			headers: { authorization: "Bearer vrx_token" },
+			headers: {
+				authorization: "Bearer vrx_token",
+				accept: "application/json, text/event-stream",
+			},
 			payload: { jsonrpc: "2.0", id: 1, method: "tools/list" },
 		});
 
@@ -85,12 +88,19 @@ describe("MCP route", () => {
 		const response = await (await createApp(createDb(undefined))).inject({
 			method: "POST",
 			url: "/mcp",
-			headers: { authorization: "Bearer vrx_token" },
+			headers: {
+				authorization: "Bearer vrx_token",
+				accept: "application/json, text/event-stream",
+			},
 			payload: {
 				jsonrpc: "2.0",
 				id: 1,
 				method: "initialize",
-				params: { protocolVersion: "2025-06-18", capabilities: {} },
+				params: {
+					protocolVersion: "2025-06-18",
+					capabilities: {},
+					clientInfo: { name: "test-client", version: "0.0.0" },
+				},
 			},
 		});
 
@@ -106,7 +116,10 @@ describe("MCP route", () => {
 		const response = await (await createApp(createDb(undefined))).inject({
 			method: "POST",
 			url: "/mcp",
-			headers: { authorization: "Bearer vrx_token" },
+			headers: {
+				authorization: "Bearer vrx_token",
+				accept: "application/json, text/event-stream",
+			},
 			payload: { jsonrpc: "2.0", method: "notifications/initialized" },
 		});
 
@@ -118,6 +131,7 @@ describe("MCP route", () => {
 		const response = await (await createApp(createDb({ role: "tester" }))).inject({
 			method: "POST",
 			url: "/mcp",
+			headers: { accept: "application/json, text/event-stream" },
 			payload: {
 				jsonrpc: "2.0",
 				id: "status",
@@ -139,6 +153,7 @@ describe("MCP route", () => {
 		const response = await (await createApp(createDb(undefined))).inject({
 			method: "POST",
 			url: "/mcp",
+			headers: { accept: "application/json, text/event-stream" },
 			payload: { jsonrpc: "2.0", id: 1, method: "tools/list" },
 		});
 

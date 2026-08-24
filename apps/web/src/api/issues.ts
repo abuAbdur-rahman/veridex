@@ -8,6 +8,12 @@ export interface IssueEnvironment {
 	version?: string;
 	page?: string;
 }
+export interface ServerMemberRef {
+	id: string;
+	name: string;
+	image: string | null;
+}
+
 export interface ServerIssue {
 	id: string;
 	ticketRef: string;
@@ -31,6 +37,9 @@ export interface ServerIssue {
 	createdAt: string | null;
 	updatedAt: string | null;
 	closedAt: string | null;
+	reporter?: ServerMemberRef | null;
+	developerAssignees?: ServerMemberRef[];
+	qaAssignees?: ServerMemberRef[];
 }
 export interface ServerIssueHistory {
 	id: string;

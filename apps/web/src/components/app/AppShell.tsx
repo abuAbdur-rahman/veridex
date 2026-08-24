@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
+import { useWorkspaceTeamStore } from "@/stores/workspace-team-store";
+
 import { Avatar } from "@/components/app/Avatar";
 import { CreateTeamModal } from "@/components/app/CreateTeamModal";
 import { WorkspaceTeamContext } from "@/components/app/workspace-team";
@@ -77,7 +79,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 	const pathname = useRouterState({ select: (state) => state.location.pathname });
 	const search = useRouterState({ select: (state) => state.location.search });
 	const navigate = useNavigate();
-	const [activeTeamId, setActiveTeamId] = useState("");
+	const activeTeamId = useWorkspaceTeamStore((state) => state.activeTeamId);
+	const setActiveTeamId = useWorkspaceTeamStore((state) => state.setActiveTeamId);
 	const [navOpen, setNavOpen] = useState(false);
 	const [logoutError, setLogoutError] = useState("");
 	const [logoutOpen, setLogoutOpen] = useState(false);
@@ -99,7 +102,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 		if (project?.teamId) {
 			setActiveTeamId(project.teamId);
 		}
-	}, [project?.teamId]);
+	}, [project?.teamId, setActiveTeamId]);
 
 	function updateProjectSearch(next: { view?: RoleView; q?: string }) {
 		if (!projectId) return;
@@ -302,6 +305,11 @@ function Sidebar({
 		teams.find((team) => team.id === activeTeamId) ??
 		teams.find((team) => team.id === currentTeamId) ??
 		teams[0];
+	const currentTeamRole = me?.teams.find((team) => team.id === currentTeam?.id)?.teamRole;
+	const canManageTeam =
+		currentTeamRole === "owner" || currentTeamRole === "admin";
+	const isPersonalWorkspace =
+		profile.username.trim().toLowerCase() === currentTeam?.name.trim().toLowerCase();
 	const { data: serverProjects } = useProjects(currentTeam?.id ?? "");
 	const deleteProjectMutation = useDeleteProject(currentTeam?.id ?? "");
 	const teamProjects = serverProjects ?? [];
@@ -523,6 +531,17 @@ function Sidebar({
 						<NavLink
 							to={`/projects/${projectId}/members`}
 							active={pathname.endsWith("/members")}
+							icon={Users}
+						>
+							Members
+						</NavLink>
+					</div>
+				) : null}
+				{!projectId && currentTeam && canManageTeam && !isPersonalWorkspace ? (
+					<div className="mt-3 border-t border-[var(--line)] pt-3">
+						<NavLink
+							to={`/teams/${currentTeam.id}/settings`}
+							active={pathname === `/teams/${currentTeam.id}/settings`}
 							icon={Users}
 						>
 							Members

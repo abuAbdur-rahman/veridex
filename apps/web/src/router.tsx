@@ -1,4 +1,5 @@
 import { createRouter } from "@tanstack/react-router";
+import { RoutePending } from "@/components/app/RoutePending";
 import { rootRoute } from "@/routes/__root";
 import { IndexRoute } from "@/routes/index";
 import { AuthRoute } from "@/routes/auth";
@@ -37,6 +38,9 @@ const routeTree = rootRoute.addChildren([
 export const router = createRouter({
 	routeTree,
 	context: { queryClient },
+	defaultPendingComponent: RoutePending,
+	defaultPendingMs: 200,
+	defaultPendingMinMs: 200,
 });
 
 declare module "@tanstack/react-router" {

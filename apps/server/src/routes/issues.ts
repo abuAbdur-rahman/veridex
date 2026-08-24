@@ -8,9 +8,12 @@ import {
 	deleteIssue,
 	getIssue,
 	getIssueStatusHistory,
+	getProjectMemberDirectory,
 	listIssues,
 	updateIssue,
 	updateStatus,
+	withMemberProjection,
+	type IssueWithAssignments,
 } from "../services/issue.service.js";
 import { broadcast } from "../ws/broadcaster.js";
 
@@ -103,6 +106,19 @@ function parseInput<T>(schema: z.ZodType<T>, input: unknown) {
 }
 
 export async function issueRoutes(fastify: FastifyInstance) {
+
+	async function projectMembers(projectId: string) {
+		return getProjectMemberDirectory(fastify.db, projectId);
+	}
+	async function serialize(
+		projectId: string,
+		issues: IssueWithAssignments | IssueWithAssignments[],
+	) {
+		const membersById = await projectMembers(projectId);
+		return Array.isArray(issues)
+			? issues.map((issue) => withMemberProjection(membersById, issue))
+			: withMemberProjection(membersById, issues);
+	}
 	fastify.post(
 		"/api/projects/:projectId/issues",
 		async (request, reply) => {
@@ -125,7 +141,7 @@ export async function issueRoutes(fastify: FastifyInstance) {
 				type: "issue:created",
 				payload: { issueId: issue.id, projectId },
 			});
-			return reply.status(201).send(issue);
+			return reply.status(201).send(await serialize(projectId, issue));
 		},
 	);
 
@@ -141,7 +157,7 @@ export async function issueRoutes(fastify: FastifyInstance) {
 			]);
 			const session = await requireSession(request);
 			const filters = parseInput(listIssuesQuerySchema, request.query);
-			return listIssues(fastify.db, projectId, session.user.id, filters);
+			return serialize(projectId, await listIssues(fastify.db, projectId, session.user.id, filters));
 		},
 	);
 
@@ -166,7 +182,7 @@ export async function issueRoutes(fastify: FastifyInstance) {
 			if (!issue) {
 				throw new (await import("../lib/errors.js")).NotFoundError("Issue");
 			}
-			return issue;
+			return serialize(projectId, issue);
 		},
 	);
 
@@ -189,7 +205,7 @@ export async function issueRoutes(fastify: FastifyInstance) {
 				type: "issue:updated",
 				payload: { issueId: issue.id, projectId },
 			});
-			return issue;
+			return serialize(projectId, issue);
 		},
 	);
 
@@ -220,7 +236,7 @@ export async function issueRoutes(fastify: FastifyInstance) {
 					source: "web",
 				},
 			});
-			return updated;
+			return serialize(projectId, updated);
 		},
 	);
 
@@ -245,7 +261,7 @@ export async function issueRoutes(fastify: FastifyInstance) {
 				type: "issue:assigned",
 				payload: { issueId: issue.id, projectId },
 			});
-			return issue;
+			return serialize(projectId, issue);
 		},
 	);
 
