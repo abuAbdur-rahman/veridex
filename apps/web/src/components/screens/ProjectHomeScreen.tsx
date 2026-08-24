@@ -20,11 +20,13 @@ import {
 	useCreateIssue,
 	useDeleteIssue,
 	useCreateIssueComment,
+	useDeleteIssueComment,
 	useIssue,
 	useIssueComments,
 	useIssueHistory,
 	useIssues,
 	useUpdateIssue,
+	useUpdateIssueComment,
 	useUpdateIssueStatus,
 	useUploadIssueImage,
 } from "@/queries/issues";
@@ -50,6 +52,8 @@ export function ProjectHomeScreen({ projectId, view, query, issueId }: ProjectHo
 	const historyQuery = useIssueHistory(projectId, issueId ?? "");
 	const commentsQuery = useIssueComments(projectId, issueId ?? "");
 	const commentMutation = useCreateIssueComment(projectId, issueId ?? "");
+	const commentUpdateMutation = useUpdateIssueComment(projectId, issueId ?? "");
+	const commentDeleteMutation = useDeleteIssueComment(projectId, issueId ?? "");
 	const createMutation = useCreateIssue(projectId);
 	const uploadMutation = useUploadIssueImage(projectId);
 	const statusMutation = useUpdateIssueStatus(projectId);
@@ -72,11 +76,8 @@ export function ProjectHomeScreen({ projectId, view, query, issueId }: ProjectHo
 		membersQuery.data?.find((member) => member.id === user?.id)?.role ?? "tester";
 	const members = membersQuery.data ?? [];
 	const effectiveView: RoleView = view ?? (role === "admin" ? "all" : role);
-	const issues = user
-		? (issuesQuery.data ?? []).map((item) => mapServerIssue(item, user, members))
-		: [];
-	const selectedIssue =
-		user && selectedQuery.data ? mapServerIssue(selectedQuery.data, user, members) : undefined;
+	const issues = (issuesQuery.data ?? []).map((item) => mapServerIssue(item));
+	const selectedIssue = selectedQuery.data ? mapServerIssue(selectedQuery.data) : undefined;
 	const history = (historyQuery.data ?? []).map((item) => mapServerHistory(item, members));
 	function updateSearch(next: { view?: RoleView; issue?: string }) {
 		void navigate({
@@ -111,7 +112,7 @@ export function ProjectHomeScreen({ projectId, view, query, issueId }: ProjectHo
 				imageUrl: uploaded?.imageUrl ?? suppliedImageUrl,
 			});
 			setReportOpen(false);
-			if (user) openIssue(mapServerIssue(created, user, members));
+			openIssue(mapServerIssue(created));
 		} catch (value) {
 			setReportError(value instanceof Error ? value.message : "Could not create issue.");
 		}
@@ -184,7 +185,7 @@ export function ProjectHomeScreen({ projectId, view, query, issueId }: ProjectHo
 			) : effectiveView === "tester" ? (
 				<TesterViewScreen
 					retestIssues={issues.filter((issue) => issue.status === "in_progress")}
-					recentIssues={issues.filter((issue) => issue.reporter.id === user?.id)}
+					recentIssues={issues.filter((issue) => issue.reporter?.id === user?.id)}
 					onReport={() => setReportOpen(true)}
 					onOpenIssue={openIssue}
 				/>
@@ -235,6 +236,9 @@ export function ProjectHomeScreen({ projectId, view, query, issueId }: ProjectHo
 					commentsPending={commentsQuery.isPending}
 					commentPending={commentMutation.isPending}
 					commentError={commentsQuery.isError ? commentsQuery.error.message : commentError}
+					currentUserId={user?.id}
+					commentUpdatePending={commentUpdateMutation.isPending}
+					commentDeletePending={commentDeleteMutation.isPending}
 					pending={busy}
 					historyPending={historyQuery.isPending}
 					onClose={() => updateSearch({ issue: undefined })}
@@ -258,6 +262,23 @@ export function ProjectHomeScreen({ projectId, view, query, issueId }: ProjectHo
 						} catch (value) {
 							setCommentError(value instanceof Error ? value.message : "Could not post comment.");
 							throw value;
+						}
+					}}
+					onUpdateComment={async (commentId, body) => {
+						setCommentError("");
+						try {
+							await commentUpdateMutation.mutateAsync({ commentId, body });
+						} catch (value) {
+							setCommentError(value instanceof Error ? value.message : "Could not update comment.");
+							throw value;
+						}
+					}}
+					onDeleteComment={async (commentId) => {
+						setCommentError("");
+						try {
+							await commentDeleteMutation.mutateAsync(commentId);
+						} catch (value) {
+							setCommentError(value instanceof Error ? value.message : "Could not delete comment.");
 						}
 					}}
 				/>

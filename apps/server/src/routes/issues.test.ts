@@ -15,6 +15,7 @@ const {
 	assignIssue,
 	getIssueStatusHistory,
 	deleteIssue,
+	getProjectMemberDirectory,
 } = vi.hoisted(() => ({
 	requireSession: vi.fn(),
 	requireProjectRole: vi.fn(),
@@ -26,6 +27,7 @@ const {
 	assignIssue: vi.fn(),
 	getIssueStatusHistory: vi.fn(),
 	deleteIssue: vi.fn(),
+	getProjectMemberDirectory: vi.fn(),
 }));
 
 vi.mock("../lib/auth.js", () => ({
@@ -41,6 +43,8 @@ vi.mock("../services/issue.service.js", () => ({
 	assignIssue,
 	getIssueStatusHistory,
 	deleteIssue,
+	getProjectMemberDirectory,
+	withMemberProjection: vi.fn((_directory: unknown, issue: unknown) => issue),
 }));
 
 const apps: Array<ReturnType<typeof Fastify>> = [];
@@ -76,6 +80,7 @@ beforeEach(() => {
 		session: { user: { id: "user-1" } },
 		membership: { role: "admin" },
 	});
+	getProjectMemberDirectory.mockResolvedValue(new Map());
 });
 
 afterEach(async () => {

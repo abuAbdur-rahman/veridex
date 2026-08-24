@@ -1,16 +1,11 @@
-import { createRoute, Navigate } from "@tanstack/react-router";
-import { McpScreen } from "@/components/screens/McpScreen";
+import { createRoute, lazyRouteComponent, Navigate } from "@tanstack/react-router";
 import { rootRoute } from "@/routes/__root";
 
 export const McpRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/profile/mcp",
-	component: McpView,
+	component: lazyRouteComponent(() => import("@/components/screens/McpScreen"), "McpScreen"),
 });
-
-function McpView() {
-	return <McpScreen />;
-}
 
 export const LegacyMcpRoute = createRoute({
 	getParentRoute: () => rootRoute,

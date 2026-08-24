@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PgDialect } from "drizzle-orm/pg-core";
+
+const { broadcast } = vi.hoisted(() => ({ broadcast: vi.fn() }));
+
+vi.mock("../ws/broadcaster.js", () => ({ broadcast }));
+
 import {
 	registerVerifiedIssueCleanupWorker,
 	runVerifiedIssueCleanup,
@@ -8,10 +13,14 @@ import {
 describe("verified issue cleanup worker", () => {
 	beforeEach(() => {
 		vi.restoreAllMocks();
+		broadcast.mockClear();
 	});
 
-	it("deletes only verified issues closed at least 24 hours ago", async () => {
-		const where = vi.fn().mockResolvedValue([{ id: "issue-1" }]);
+	it("deletes only verified issues closed at least 24 hours ago and broadcasts deletions", async () => {
+		const returning = vi.fn().mockResolvedValue([
+			{ id: "issue-1", projectId: "project-1" },
+		]);
+		const where = vi.fn().mockReturnValue({ returning });
 		const db = { delete: vi.fn().mockReturnValue({ where }) };
 
 		await runVerifiedIssueCleanup(db as never);
@@ -24,6 +33,10 @@ describe("verified issue cleanup worker", () => {
 			'"issues"."closed_at" <= now() - interval \'24 hours\'',
 		);
 		expect(query.params).toEqual(["verified"]);
+		expect(broadcast).toHaveBeenCalledWith("project-1", {
+			type: "issue:deleted",
+			payload: { issueId: "issue-1", projectId: "project-1" },
+		});
 	});
 
 	it("registers the cleanup worker", () => {

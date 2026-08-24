@@ -69,6 +69,16 @@ describe("createAuth", () => {
 		expect(options.advanced.useSecureCookies).toBe(expected);
 	});
 
+	it("generates UUID ids so user ids pass app-level uuid validation", () => {
+		const options = createAuth(db, environment) as unknown as {
+			advanced: { database: { generateId: () => string } };
+		};
+
+		expect(options.advanced.database.generateId()).toMatch(
+			/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+		);
+	});
+
 	it("registers only providers with complete credentials", () => {
 		const options = createAuth(db, {
 			...environment,

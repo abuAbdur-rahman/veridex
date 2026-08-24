@@ -4,7 +4,10 @@ import { issueCommentsQueryKey, issueHistoryQueryKey, issueQueryKey, issuesQuery
 export type ProjectSocketEvent =
 	| { type: "issue:created"; payload: { issueId: string; projectId: string } }
 	| { type: "issue:updated"; payload: { issueId: string; projectId: string } }
-	| { type: "issue:status_changed"; payload: { issueId: string; projectId: string } }
+	| {
+			type: "issue:status_changed";
+			payload: { issueId: string; projectId: string; toStatus: string; source: string };
+	  }
 	| { type: "issue:assigned"; payload: { issueId: string; projectId: string } }
 	| { type: "issue:deleted"; payload: { issueId: string; projectId: string } }
 	| {
