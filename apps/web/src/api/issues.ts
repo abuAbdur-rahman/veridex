@@ -8,6 +8,12 @@ export interface IssueEnvironment {
 	version?: string;
 	page?: string;
 }
+export interface ServerMemberRef {
+	id: string;
+	name: string;
+	image: string | null;
+}
+
 export interface ServerIssue {
 	id: string;
 	ticketRef: string;
@@ -31,6 +37,9 @@ export interface ServerIssue {
 	createdAt: string | null;
 	updatedAt: string | null;
 	closedAt: string | null;
+	reporter?: ServerMemberRef | null;
+	developerAssignees?: ServerMemberRef[];
+	qaAssignees?: ServerMemberRef[];
 }
 export interface ServerIssueHistory {
 	id: string;
@@ -91,6 +100,16 @@ const isEnvironment = (v: unknown): v is IssueEnvironment | null => {
 		(key) => v[key] === undefined || typeof v[key] === "string",
 	);
 };
+const isServerMemberRef = (v: unknown): v is ServerMemberRef =>
+	isRecord(v) &&
+	typeof v.id === "string" &&
+	typeof v.name === "string" &&
+	v.image === null;
+const nullableServerMemberRef = (v: unknown): v is ServerMemberRef | null =>
+	v === null || isServerMemberRef(v);
+const serverMemberRefArray = (v: unknown): v is ServerMemberRef[] =>
+	Array.isArray(v) && v.every(isServerMemberRef);
+
 export function isServerIssue(v: unknown): v is ServerIssue {
 	if (!isRecord(v)) return false;
 	return (
@@ -119,7 +138,10 @@ export function isServerIssue(v: unknown): v is ServerIssue {
 		nullableString(v.importJobId) &&
 		nullableString(v.createdAt) &&
 		nullableString(v.updatedAt) &&
-		nullableString(v.closedAt)
+		nullableString(v.closedAt) &&
+		(v.reporter === undefined || nullableServerMemberRef(v.reporter)) &&
+		(v.developerAssignees === undefined || serverMemberRefArray(v.developerAssignees)) &&
+		(v.qaAssignees === undefined || serverMemberRefArray(v.qaAssignees))
 	);
 }
 export function isServerHistory(v: unknown): v is ServerIssueHistory {

@@ -97,7 +97,7 @@ The web app currently consumes the server session, onboarding, team, and invite 
 - **Teams:** `GET /api/teams` (sidebar), `POST /api/teams` (create), `GET /api/teams/:teamId/members` (settings).
 - **Invites:** `POST /api/teams/:teamId/invites` (create invite), `GET /api/invites/:token/validate` (public), `POST /api/invites/:token/accept` (authenticated).
 
-Project, issue, import, WebSocket, API-token, and MCP screens remain fixture-backed until their server contracts are implemented and wired. The local test-user session endpoint is development-only and must never be enabled outside loopback development.
+The server contracts for projects, issues, import, WebSocket, API-token, and MCP are implemented (see `.agents/states/server.md`). Web integration is tracked per feature in `.agents/states/web.md` — consult it for which screens consume live server contracts versus remaining fixture-backed; do not assume all issue/import/WebSocket/API-token/MCP screens are still fixture-backed. The local test-user session endpoint is development-only and must never be enabled outside loopback development.
 
 Do not infer endpoint availability from frontend screens. Confirm implemented server scope in `.agents/states/server.md` before replacing fixture behavior.
 

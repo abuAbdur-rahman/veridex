@@ -14,7 +14,7 @@ import {
 	type UpdateIssueInput,
 } from "@/api/issues";
 import type { IssueStatus } from "@/lib/veridex-types";
-import { createComment, listComments } from "@/api/comments";
+import { createComment, deleteComment, listComments, updateComment } from "@/api/comments";
 
 export const issuesQueryKey = (projectId: string) => ["projects", projectId, "issues"] as const;
 export const issueQueryKey = (projectId: string, issueId: string) =>
@@ -67,6 +67,21 @@ export function useCreateIssueComment(projectId: string, issueId: string) {
 	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: (body: string) => createComment(projectId, issueId, body),
+		onSuccess: () => queryClient.invalidateQueries({ queryKey: issueCommentsQueryKey(projectId, issueId) }),
+	});
+}
+export function useUpdateIssueComment(projectId: string, issueId: string) {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: ({ commentId, body }: { commentId: string; body: string }) =>
+			updateComment(projectId, commentId, body),
+		onSuccess: () => queryClient.invalidateQueries({ queryKey: issueCommentsQueryKey(projectId, issueId) }),
+	});
+}
+export function useDeleteIssueComment(projectId: string, issueId: string) {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: (commentId: string) => deleteComment(projectId, commentId),
 		onSuccess: () => queryClient.invalidateQueries({ queryKey: issueCommentsQueryKey(projectId, issueId) }),
 	});
 }

@@ -661,3 +661,48 @@ Key test targets:
 | DB-level cross-schema FKs | Not supported cleanly by Drizzle-kit; app-level enforcement used instead |
 | Email/notifications | Out of scope for MVP — invite links are shareable, not emailed |
 | Docker for production | Railway handles it |
+
+## Fix #15 — Issue Member Projection
+
+Issue list/detail/create/update/status/assign responses embed resolved member
+references so clients do not need a second lookup against project members to
+display names.
+
+Contract: every serialized issue carries optional projection fields alongside
+the raw ID fields (kept for backward compatibility during client transition):
+
+```typescript
+interface MemberRef {
+  id: string;
+  name: string;
+  image: string | null;
+}
+
+// Added to each issue response:
+reporter?: MemberRef | null;
+developerAssignees?: MemberRef[];
+qaAssignees?: MemberRef[];
+```
+
+- Resolution joins `project_member` with `auth.user` per request (one query),
+  scoped by `projectId`; never a per-issue N+1.
+- Raw `reporterId`, `developerAssigneeIds`, and `qaAssigneeIds` remain the
+  source of truth for mutations; projection fields are display-only.
+- Implemented in `issue.service.ts` (`getProjectMemberDirectory`,
+  `withMemberProjection`) and applied in `routes/issues.ts`.
+
+## Integration Test Harness (Real PostgreSQL)
+
+`apps/server` runs a focused integration tier against real PostgreSQL:
+
+- Harness: `src/test/pg-harness.ts` — ephemeral `postgres:16-alpine` container
+  driven by the Docker CLI (`docker run -P`, readiness via `pg_isready`, teardown
+  via `docker rm -f`, crash-safe cleanup on process exit). No extra dependencies;
+  applies the full migration chain and the `drizzle.__drizzle_migrations`
+  ledger; exposes drizzle `db`, raw `sql`, `reset()` (TRUNCATE all app tables
+  between tests), `stop()`.
+- Command: `pnpm test:integration`. Excluded from the default unit run by
+  `vitest.config.ts`. Auto-skips when Docker is unavailable.
+- Tier owns behaviors the transaction double cannot prove: constraint
+  enforcement, rollback semantics, status+history atomicity under concurrent
+  transitions, and migration-chain integrity.

@@ -37,7 +37,7 @@ export interface Issue {
 	testCaseRef?: string;
 	developerAssignees: IssueAssignee[];
 	qaAssignees: IssueAssignee[];
-	reporter: IssueAssignee;
+	reporter?: IssueAssignee;
 	createdAt: string;
 	updatedAt: string;
 	tags?: string[];

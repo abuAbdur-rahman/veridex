@@ -27,7 +27,7 @@ export function AdminBoard({
 			: view === "qa"
 				? issues.filter((issue) => issue.status === "in_qa")
 				: view === "tester"
-					? issues.filter((issue) => issue.reporter.id === currentUserId)
+					? issues.filter((issue) => issue.reporter?.id === currentUserId)
 					: issues;
 	return (
 		<div className="flex h-full flex-col">

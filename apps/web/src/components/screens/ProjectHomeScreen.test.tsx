@@ -40,6 +40,7 @@ const mockIssue = {
 	imageUrl: null,
 	projectId: "proj_1",
 	reporterId: "usr_sarah",
+	reporter: { id: "usr_sarah", name: "Sarah Chen", image: null },
 	assigneeId: null,
 	qaAssigneeId: null,
 	developerAssigneeIds: [],
@@ -126,6 +127,6 @@ describe("ProjectHomeScreen", () => {
 		expect(
 			await screen.findByRole("heading", { name: "All issues" }, { timeout: 5_000 }),
 		).toBeInTheDocument();
-		expect(screen.getByText("VER-042")).toBeInTheDocument();
+		expect(await screen.findByText("VER-042", undefined, { timeout: 5_000 })).toBeInTheDocument();
 	}, 15_000);
 });
