@@ -1,16 +1,14 @@
-import { createRoute, Navigate } from "@tanstack/react-router";
-import { SettingsScreen } from "@/components/screens/SettingsScreen";
+import { createRoute, lazyRouteComponent, Navigate } from "@tanstack/react-router";
 import { rootRoute } from "@/routes/__root";
 
 export const SettingsRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/profile/settings",
-	component: SettingsView,
+	component: lazyRouteComponent(
+		() => import("@/components/screens/SettingsScreen"),
+		"SettingsScreen",
+	),
 });
-
-function SettingsView() {
-	return <SettingsScreen />;
-}
 
 export const LegacySettingsRoute = createRoute({
 	getParentRoute: () => rootRoute,

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { WebSocket } from "ws";
 
 export type ChangeSource = "web" | "mcp" | "import";
@@ -41,9 +42,24 @@ export type WsEvent =
 			payload: { commentId: string; issueId: string; projectId: string };
 	  };
 
-// In-memory room registry. Single-instance only — see backend spec §3 scaling
-// limit. Swap to Postgres LISTEN/NOTIFY over the pg-boss connection for
-// multi-instance without changing this module's public surface.
+export const BROADCAST_CHANNEL = "veridex:ws-events";
+
+interface BroadcastEnvelope {
+	originId: string;
+	event: WsEvent;
+}
+
+// Postgres NOTIFY payload cap is 8000 bytes. Events are tiny; this guard only
+// protects against an unexpected oversize payload silently dropped by the bus.
+const MAX_PAYLOAD_BYTES = 8000;
+
+// Per-process identity so a server does not echo its own notifications back to
+// its own sockets (which would duplicate deliveries within one instance).
+const INSTANCE_ID = randomUUID();
+
+type Publisher = (payload: string) => void | Promise<void>;
+let publisher: Publisher | undefined;
+
 const rooms = new Map<string, Set<WebSocket>>();
 
 export function joinRoom(projectId: string, socket: WebSocket): void {
@@ -62,7 +78,7 @@ export function leaveRoom(projectId: string, socket: WebSocket): void {
 	if (sockets.size === 0) rooms.delete(projectId);
 }
 
-export function broadcast(projectId: string, event: WsEvent): void {
+function deliverLocally(projectId: string, event: WsEvent): void {
 	const sockets = rooms.get(projectId);
 	if (!sockets || sockets.size === 0) return;
 	const message = JSON.stringify(event);
@@ -77,4 +93,47 @@ export function broadcast(projectId: string, event: WsEvent): void {
 			}
 		}
 	}
+}
+
+export function broadcast(projectId: string, event: WsEvent): void {
+	deliverLocally(projectId, event);
+	if (!publisher) return;
+	const envelope: BroadcastEnvelope = { originId: INSTANCE_ID, event };
+	const payload = JSON.stringify(envelope);
+	if (Buffer.byteLength(payload, "utf8") > MAX_PAYLOAD_BYTES) return;
+	void publisher(payload);
+}
+
+export function attachBroadcastPublisher(fn: Publisher): void {
+	publisher = fn;
+}
+
+export function detachBroadcastPublisher(): void {
+	publisher = undefined;
+}
+
+export function handleRemoteBroadcast(raw: string): void {
+	let envelope: BroadcastEnvelope;
+	try {
+		envelope = JSON.parse(raw) as BroadcastEnvelope;
+	} catch {
+		return;
+	}
+	if (!envelope || envelope.originId === INSTANCE_ID) return;
+	if (!isWsEvent(envelope.event)) return;
+	deliverLocally(envelope.event.payload.projectId, envelope.event);
+}
+
+function isWsEvent(value: unknown): value is WsEvent {
+	if (typeof value !== "object" || value === null) return false;
+	const candidate = value as { type?: unknown; payload?: unknown };
+	if (typeof candidate.type !== "string") return false;
+	if (
+		typeof candidate.payload !== "object" ||
+		candidate.payload === null ||
+		typeof (candidate.payload as { projectId?: unknown }).projectId !== "string"
+	) {
+		return false;
+	}
+	return true;
 }

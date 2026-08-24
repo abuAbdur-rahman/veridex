@@ -44,12 +44,17 @@ interface IssueDetailPanelProps {
 	commentsPending?: boolean;
 	commentPending?: boolean;
 	commentError?: string;
+	currentUserId?: string;
+	commentUpdatePending?: boolean;
+	commentDeletePending?: boolean;
 	onClose: () => void;
 	onUpdate: (input: UpdateIssueInput) => Promise<void>;
 	onStatusChange: (status: IssueStatus, note?: string) => Promise<void>;
 	onAssign: (input: { developerAssigneeIds: string[]; qaAssigneeIds: string[] }) => Promise<void>;
 	onDelete: () => Promise<void>;
 	onComment: (body: string) => Promise<void>;
+	onUpdateComment: (commentId: string, body: string) => Promise<void>;
+	onDeleteComment: (commentId: string) => Promise<void>;
 }
 export function IssueDetailPanel({
 	issue,
@@ -62,12 +67,17 @@ export function IssueDetailPanel({
 	commentsPending = false,
 	commentPending = false,
 	commentError,
+	currentUserId,
+	commentUpdatePending = false,
+	commentDeletePending = false,
 	onClose,
 	onUpdate,
 	onStatusChange,
 	onAssign,
 	onDelete,
 	onComment,
+	onUpdateComment,
+	onDeleteComment,
 }: IssueDetailPanelProps) {
 	const [editing, setEditing] = useState(false);
 	const [imageOpen, setImageOpen] = useState(false);
@@ -294,7 +304,13 @@ export function IssueDetailPanel({
 							resolveAuthor={(authorId) =>
 								members.find((member) => member.id === authorId)?.name ?? authorId
 							}
+							currentUserId={currentUserId}
+							canModerate={role === "admin"}
+							updatePending={commentUpdatePending}
+							deletePending={commentDeletePending}
 							onSubmit={onComment}
+							onUpdateComment={onUpdateComment}
+							onDeleteComment={onDeleteComment}
 						/>
 					)}
 					{canDelete ? (

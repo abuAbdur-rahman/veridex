@@ -9,6 +9,7 @@ import {
 	listIssues,
 	updateIssue,
 	updateStatus,
+	withMemberProjection,
 } from "./issue.service.js";
 import {
 	issues,
@@ -505,5 +506,46 @@ describe("issue.service", () => {
 			expect(result.developerAssigneeIds).toEqual([]);
 			expect(result.qaAssigneeIds).toEqual([]);
 		});
+	});
+});
+
+describe("withMemberProjection", () => {
+	const baseIssue = {
+		id: "issue-1",
+		reporterId: "user-1",
+		developerAssigneeIds: ["user-1", "user-2"],
+		qaAssigneeIds: [],
+	} as unknown as Parameters<typeof withMemberProjection>[1];
+
+	it("resolves member refs from the directory", () => {
+		const directory = new Map([
+			["user-1", { id: "user-1", name: "Ada", image: "a.png" }],
+			["user-2", { id: "user-2", name: "Ben", image: null }],
+		]);
+		const result = withMemberProjection(directory, baseIssue);
+		expect(result.reporter).toEqual({ id: "user-1", name: "Ada", image: "a.png" });
+		expect(result.developerAssignees).toEqual([
+			{ id: "user-1", name: "Ada", image: "a.png" },
+			{ id: "user-2", name: "Ben", image: null },
+		]);
+		expect(result.qaAssignees).toEqual([]);
+	});
+
+	it("falls back to Unknown member when an id is missing from the directory", () => {
+		const result = withMemberProjection(new Map(), baseIssue);
+		expect(result.reporter?.name).toBe("Unknown member");
+		expect(result.developerAssignees[1]).toEqual({
+			id: "user-2",
+			name: "Unknown member",
+			image: null,
+		});
+	});
+
+	it("returns a null reporter when reporterId is absent", () => {
+		const result = withMemberProjection(new Map(), {
+			...baseIssue,
+			reporterId: null,
+		} as unknown as typeof baseIssue);
+		expect(result.reporter).toBeNull();
 	});
 });

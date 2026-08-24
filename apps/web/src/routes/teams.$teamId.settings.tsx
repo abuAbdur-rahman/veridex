@@ -1,14 +1,11 @@
-import { createRoute } from "@tanstack/react-router";
-import { TeamSettingsScreen } from "@/components/screens/TeamSettingsScreen";
+import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
 import { rootRoute } from "@/routes/__root";
 
 export const TeamSettingsRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/teams/$teamId/settings",
-	component: TeamSettingsView,
+	component: lazyRouteComponent(
+		() => import("@/routes/team-settings-view"),
+		"TeamSettingsView",
+	),
 });
-
-function TeamSettingsView() {
-	const { teamId } = TeamSettingsRoute.useParams();
-	return <TeamSettingsScreen teamId={teamId} />;
-}

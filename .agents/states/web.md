@@ -1,12 +1,14 @@
 # Veridex Frontend Handoff
 
-Updated: 2026-08-22
+Updated: 2026-08-24
 
 ## Current State
 
 - Auth/session, onboarding, teams/invites, projects/membership, issue/status-history (including rejection), spreadsheet import, issue comments, and project WebSocket refresh slices are integrated in the web app.
-- API token management is integrated. `/profile/mcp` also loads project access summaries and recent MCP-triggered status activity. The manual MCP JSON-RPC endpoint is available, while migration to the MCP SDK Streamable HTTP transport remains a server follow-up.
-- Authenticated routes share `apps/web/src/components/app/AppShell.tsx`. Server-backed team selection is shared between shell and dashboard.
+- API token management is integrated. `/profile/mcp` also loads project access summaries and recent MCP-triggered status activity. The server `/mcp` endpoint uses the MCP SDK Streamable HTTP transport (stateless, JSON responses); the MCP profile screen is wired to it via `VITE_MCP_URL=/mcp` (`.env.local`) plus a Vite `/mcp` proxy, so the endpoint and one-time client-config block render.
+- Authenticated routes share `apps/web/src/components/app/AppShell.tsx`. Server-backed team selection is shared between shell and dashboard and persisted across reloads via `apps/web/src/stores/workspace-team-store.ts` (zustand persist).
+- Sidebar shows a team-level "Members" nav item (`/teams/$teamId/settings`) when no project is selected; visible to team owners/admins only and hidden when the username matches the team name.
+- Route components are code-split with `lazyRouteComponent` (dashboard, project board, import, members, team settings, settings, MCP); landing/login/onboarding stay eager. Main chunk is ~296KB (~93KB gzip).
 - Runtime-validated request adapters live in `apps/web/src/api/`; TanStack Query options and mutations live in `apps/web/src/queries/`.
 - `demo-store.ts` remains fixture-only and is not used for server-backed project, issue, or project-member mutations.
 - Lifecycle remains `backlog <-> in_progress <-> in_qa <-> verified`; backward transitions require an audit note.
@@ -62,6 +64,8 @@ These drive search/list views, report form, detail/edit, workflow transitions, d
 - `apps/web/src/lib/project-websocket.ts`
 - `apps/web/src/lib/server-mappers.ts`
 - `apps/web/src/components/app/AppShell.tsx`, `workspace-team.ts`
+- `apps/web/src/stores/workspace-team-store.ts`
+- `apps/web/src/api/comments.ts`, `apps/web/src/lib/server-mappers.ts`
 - `apps/web/src/components/screens/DashboardScreen.tsx`
 - `apps/web/src/components/screens/MembersScreen.tsx`
 - `apps/web/src/components/screens/ProjectHomeScreen.tsx`
@@ -80,8 +84,8 @@ Run from `apps/web/`:
 - `src/api/import.test.ts`: 7 tests passed.
 - `src/queries/import.test.ts`: 2 tests passed.
 - Full Vitest run: 13 files, 48 tests passed. The earlier `ProjectHomeScreen.test.tsx` heading failure ("Unable to find role='heading' and name 'All issues'") is resolved by the working-tree fixture/board-filter changes (the mock issue now carries `developerAssigneeIds`/`qaAssigneeIds` and the dev board filters on `developerAssignees`).
-- Latest full Vitest run: 15 files, 55 tests passed. Token adapter and WebSocket cache-invalidation coverage are included; existing jsdom navigation stderr is non-failing.
-- `pnpm typecheck`, `pnpm lint`, and `pnpm build` passed. Build warning remains: main JS chunk approximately 735 KB before gzip; route splitting is future optimization.
+- Latest full Vitest run: 16 files, 60 tests passed (includes `api/comments.test.ts` adapter coverage). Token adapter and WebSocket cache-invalidation coverage are included; existing jsdom navigation stderr is non-failing.
+- `pnpm typecheck`, `pnpm lint`, and `pnpm build` passed. Route splitting landed: main JS chunk is ~296 KB before gzip (~93 KB gzip); the >500KB chunk-size warning is resolved.
 
 Focused coverage:
 
@@ -93,9 +97,10 @@ Focused coverage:
 
 ## Remaining Work
 
-- Comment edit/delete UI is not yet wired; list/create are integrated.
-- MCP SDK Streamable HTTP transport migration remains pending; the current server endpoint uses manual JSON-RPC handling.
-- The issue API returns raw IDs; a future server-side member projection could remove the client lookup.
+- Comment edit/delete UI is wired (`PATCH/DELETE /api/projects/:projectId/comments/:commentId` adapters in `api/comments.ts`, mutations in `queries/issues.ts`, inline edit + confirm-delete in `CommentThread.tsx`; author or project admin only). No remaining comment gaps.
+- The issue API embeds the server member projection (Fix #15, see `.agents/states/server.md`); `lib/server-mappers.ts` maps `reporter`/`developerAssignees`/`qaAssignees` refs directly — the client member-list fallback has been removed. `Issue.reporter` is now optional in `veridex-types.ts`.
+- Router-level pending state: `defaultPendingComponent: RoutePending` (`components/app/RoutePending.tsx`) with 200ms `defaultPendingMs`/`defaultPendingMinMs` covers lazy-route loads.
+- No known open work; further bundle analysis is optional.
 
 ## Do Not Regress
 

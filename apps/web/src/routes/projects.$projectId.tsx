@@ -1,5 +1,4 @@
-import { createRoute } from "@tanstack/react-router";
-import { ProjectHomeScreen } from "@/components/screens/ProjectHomeScreen";
+import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
 import { rootRoute } from "@/routes/__root";
 import type { RoleView } from "@/lib/veridex-types";
 
@@ -25,11 +24,8 @@ export const ProjectRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/projects/$projectId",
 	validateSearch: validateProjectSearch,
-	component: ProjectRouteView,
+	component: lazyRouteComponent(
+		() => import("@/routes/project-view"),
+		"ProjectRouteView",
+	),
 });
-
-function ProjectRouteView() {
-	const { projectId } = ProjectRoute.useParams();
-	const { view, q, issue } = ProjectRoute.useSearch();
-	return <ProjectHomeScreen projectId={projectId} view={view} query={q ?? ""} issueId={issue} />;
-}

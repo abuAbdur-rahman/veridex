@@ -1,10 +1,10 @@
 # Server State
 
-Last updated: 2026-08-22
+Last updated: 2026-08-24
 
 ## Current Boundary
 
-The backend foundation, onboarding, teams/invites, projects/membership, issues/status-history, spreadsheet import, realtime WebSocket, API-token REST, comments, and MCP vertical slices are implemented in `apps/server/`. The MCP endpoint is currently stateless manual JSON-RPC; SDK Streamable HTTP transport remains planned.
+The backend foundation, onboarding, teams/invites, projects/membership, issues/status-history, spreadsheet import, realtime WebSocket, API-token REST, comments, and MCP vertical slices are implemented in `apps/server/`. The `/mcp` endpoint now uses the `@modelcontextprotocol/sdk` `StreamableHTTPServerTransport` (stateless, JSON responses) with the same bearer-token auth and scoped tool callbacks. The WebSocket broadcaster is now multi-instance via Postgres `LISTEN`/`NOTIFY` (`event-bus.ts`) behind the unchanged `joinRoom`/`leaveRoom`/`broadcast` surface.
 
 ## Implemented API Token Slice
 
@@ -20,7 +20,7 @@ The authenticated REST lifecycle is registered in `apps/server/src/app.ts` and i
 3. `DELETE /api/tokens/:id` validates the UUID, enforces user ownership, and soft-revokes the token with `204`.
 4. Focused tests cover session enforcement, validation, one-time token return, hash-only persistence, ownership, and soft revocation.
 
-The MCP SDK dependency is present for the planned Streamable HTTP transport. The current stateless endpoint uses the same bearer-token format and service authorization rules while that transport migration remains pending.
+The MCP SDK `StreamableHTTPServerTransport` migration is complete: `/mcp` serves the same six scoped tools over the stateless SDK transport with the same bearer-token format and service authorization rules.
 
 The active implementation plan is sourced from:
 
@@ -115,7 +115,7 @@ Routes:
 - `PATCH/DELETE /api/projects/:projectId/comments/:commentId` allows comment authors or project admins to edit/soft-delete comments.
 - `GET /api/mcp/access-summary` returns project memberships and the six tools available for each role.
 - `GET /api/mcp/activity` returns the caller's latest MCP-sourced status changes.
-- `POST /mcp` requires an active, nonexpired, nonrevoked `vrx_` bearer token and supports `tools/list` plus the six scoped issue tools. Tool failures are returned as JSON-RPC `result.isError`; bearer authentication failures retain the shared HTTP error envelope.
+- `POST /mcp` requires an active, nonexpired, nonrevoked `vrx_` bearer token and supports `tools/list` plus the six scoped issue tools over the MCP SDK `StreamableHTTPServerTransport` (stateless, `enableJsonResponse: true`). `GET`/`DELETE /mcp` return `405` JSON-RPC errors. Tool failures are returned as `CallToolResult.isError`; bearer authentication failures retain the shared HTTP error envelope.
 
 MCP tool permissions are `tester+` for list/get/create, `dev+` for update/status, and `qa+` for assignment. Status and assignment calls pass `source: "mcp"`.
 
@@ -219,7 +219,7 @@ Behavior:
 - The client passes `projectId` as a query parameter. Missing `projectId` closes the socket with code `4000` (`"projectId required"`).
 - The handler re-checks the session via `request.server.auth.api.getSession` on connect; an invalid session closes with code `4001` (`"Session expired"`). Membership is checked against `project_member` for any role; non-members close with code `4003` (`"Not a project member"`).
 - On a `ping` message the handler re-checks the session; if expired it sends `{ type: "auth:expired" }` then closes `4001`, otherwise it replies `{ type: "pong" }`.
-- `broadcaster.ts` keeps an in-memory `Map<projectId, Set<WebSocket>>` (single-instance only). `joinRoom`/`leaveRoom` manage membership; `leaveRoom` drops empty room sets. `broadcast(projectId, event)` stringifies the event once and sends only to `OPEN` sockets, dropping broken sockets via try/catch. Multi-instance deployments must replace this with Postgres `LISTEN`/`NOTIFY` through pg-boss.
+- `broadcaster.ts` keeps an in-memory `Map<projectId, Set<WebSocket>>` for local delivery and is now multi-instance: `broadcast(projectId, event)` delivers locally and, when a publisher is attached (entrypoint only), publishes a `{originId, event}` envelope over Postgres `LISTEN`/`NOTIFY` (`ws/event-bus.ts`, channel `veridex:ws-events`, dedicated unpooled connection). Incoming `NOTIFY` payloads call `handleRemoteBroadcast`, which skips this instance's own `originId` and delivers other instances' events locally. `joinRoom`/`leaveRoom`/`broadcast` remain unchanged, so service-layer and route call sites are unaffected.
 - Events emitted (discriminated union `WsEvent`): `issue:created`, `issue:updated`, `issue:status_changed` (carries `source: 'web' | 'mcp' | 'import'`), `issue:assigned`, `issue:deleted`.
 - Broadcasts are wired at call sites (not inside services) and only after the DB transaction commits: all five issue mutations in `src/routes/issues.ts` and per-row `issue:created` in `src/jobs/import.worker.ts`. This keeps the services DB-pure and keeps the broadcast-after-commit ordering required by the spec.
 
@@ -250,7 +250,7 @@ pnpm db:migrate
 
 Latest results:
 
-- Vitest: 25 files, 309 tests passed, including bearer-token authentication, pending invite list/revoke routes, and MCP JSON-RPC role/error behavior.
+- Vitest: 26 files, 313 tests passed, including bearer-token authentication, MCP SDK Streamable HTTP role/error behavior, and multi-instance WebSocket broadcast delivery.
 - Typecheck: passed.
 - Build: passed.
 
@@ -296,7 +296,12 @@ Completed task:
 - Realtime WebSocket slice: `@fastify/websocket` plugin registered after auth in `app.ts`; `GET /ws?projectId=` handler validates session + project membership and uses close codes `4000`/`4001`/`4003`; `ping`→`pong`/`auth:expired` re-checks session; in-memory per-project room broadcaster emits `issue:created|updated|status_changed|assigned|deleted` from issue route call sites and the import worker, all after transaction commit. WebSocket realtime tests added (broadcaster + handler). 282 tests pass.
 - API-token REST slice: `GET/POST /api/tokens` and `DELETE /api/tokens/:id` require a Better Auth session; creation returns plaintext once, stores only SHA-256 plus prefix, and revocation is ownership-scoped and soft. Focused route/service tests cover validation and security invariants. Bearer authentication is also used by `/mcp` and updates `lastUsedAt`.
 - Import hardening and sole-member pass (review findings fixed): `getIssueStatusHistory` is project-scoped (no cross-project history reads); import duplicate-title detection is case-insensitive and backed by migration `0012`'s unique expression index; imported issues persist `importJobId`; row-mapped developer/QA IDs and status-mapping IDs are role-validated against project membership; `mappedQaAssigneeId` now takes precedence for `in_qa` rows; `confirmImport` publishes the queue payload before persisting the mapping so enqueue failure leaves job state untouched; upload accepts uppercase `.CSV`/`.XLSX` extensions; new issues created in a single-member project auto-assign the sole member (web creation and imports), while explicit assignments in multi-member projects remain role-validated.
+- MCP Streamable HTTP transport migration: `POST /mcp` rewritten on `@modelcontextprotocol/sdk` `Server` + `StreamableHTTPServerTransport` (stateless, `enableJsonResponse: true`); `GET`/`DELETE /mcp` return `405` JSON-RPC. Bearer auth, `toolDefinitions`, role enforcement, and the six scoped tools are preserved and verified by `mcp.test.ts`.
+- WebSocket multi-instance broadcaster: `ws/event-bus.ts` adds a Postgres `LISTEN`/`NOTIFY` bus over a dedicated unpooled connection (channel `veridex:ws-events`); `broadcaster.ts` delivers locally and publishes/consumes `{originId, event}` envelopes so multiple server instances fan out events. Public `joinRoom`/`leaveRoom`/`broadcast` surface is unchanged; route/service call sites untouched. 313 tests pass.
+- Better Auth UUID id generation fix: `auth/index.ts` now sets `advanced.database.generateId = () => crypto.randomUUID()`, matching the spec contract that `auth.user.id` is a UUID string (`.agents/veridex-db-schema.md`). Without it Better Auth generated 32-char alphanumeric ids, which failed every app-level `z.string().uuid()` user-id check (issue assignment REST/MCP schemas, project member add/remove). A function is required (not `"uuid"`) because `auth.user.id` is a plain text column without a `gen_random_uuid()` default. Verified live: new sign-ups get UUID ids and MCP `assign_issue` succeeds with real user ids; pre-existing dev users keep their legacy ids. 322 tests pass.
+- Issue member projection (spec Fix #15): `issue.service.ts` adds `getProjectMemberDirectory` (one `project_member ⨝ auth.user` join per request, project-scoped) and pure `withMemberProjection`; every issue-returning route in `routes/issues.ts` (create/list/detail/update/status/assign) now embeds display-only `reporter`/`developerAssignees`/`qaAssignees` `{id, name, image}` refs alongside the raw ID fields (kept for client transition). `updateStatus` now returns `IssueWithAssignments` like the other mutations. Route-test service mock extended; 3 new `withMemberProjection` unit tests. 325 tests pass.
+- Real-PostgreSQL integration-test harness: `src/test/pg-harness.ts` boots an ephemeral `postgres:16-alpine` container via the Docker CLI (`docker run`/`docker port`/`pg_isready` readiness polling/`docker rm -f` teardown, no extra dependencies), applies the full migration chain (`0000→0012`) including the `drizzle.__drizzle_migrations` ledger, and exposes drizzle `db`, raw `sql`, `reset()` (TRUNCATE-all between tests), and `stop()`. Suite: `pnpm test:integration` (`vitest.integration.config.ts`, 30s test timeout, no file parallelism); auto-skipped when Docker is unavailable; excluded from the default unit run via `vitest.config.ts`. Coverage: migration-chain count, case-insensitive duplicate-title constraint through the service path (409 `DUPLICATE_ISSUE`), status+history atomicity, and exactly-one-winner concurrency for backward transitions. 4 integration tests pass; unit suite remains 325 tests / double-free.
 
 ## Next Recommended Slice
 
-Migrate `/mcp` to `StreamableHTTPServerTransport` from `@modelcontextprotocol/sdk`, preserving stateless bearer authentication and the current tool callbacks. Note: the WebSocket broadcaster is single-instance (in-memory `Map`); replace with Postgres `LISTEN`/`NOTIFY` via pg-boss before running more than one server instance.
+Both the `/mcp` Streamable HTTP transport migration and the WebSocket `LISTEN`/`NOTIFY` multi-instance broadcaster are now complete (see Task Record), as is the Better Auth UUID id-generation fix. Issue responses now embed the member projection (Fix #15), and the web app consumes it (see `.agents/states/web.md`). The real-PostgreSQL integration harness now covers migration integrity, unique-constraint enforcement, transaction atomicity, and transition concurrency (`pnpm test:integration`, Docker required). Possible follow-ups: extend the integration tier to token, import, and comment services. Otherwise the backend vertical slices are fully implemented.
