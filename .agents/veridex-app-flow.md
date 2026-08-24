@@ -317,8 +317,11 @@ Every transition writes both `issues.status` and an `issue_status_history` row a
 |------|---------------------|
 | `backlog` | `in_progress` |
 | `in_progress` | `in_qa`, `backlog` |
-| `in_qa` | `verified`, `in_progress` |
+| `in_qa` | `verified`, `in_progress`, `rejected` |
 | `verified` | `in_qa` |
+| `rejected` | `backlog` |
+
+A QA-side rejection (`in_qa` -> `rejected`) marks the issue as not fixable / won't fix for now; `rejected` issues can be reopened to `backlog`. When a member without the dev role attempts a rejection on an issue they do not own, the service downgrades the transition target to `backlog` instead.
 
 Every backward transition requires a note so progress is never erased without an audit explanation.
 

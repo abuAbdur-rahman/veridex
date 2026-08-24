@@ -41,10 +41,12 @@ function createInsertMock(result: Record<string, unknown>) {
 	})) as unknown as Database["insert"];
 }
 
-function createUpdateMock() {
+function createUpdateMock(claimed: boolean = true) {
 	return vi.fn(() => ({
 		set: vi.fn(() => ({
-			where: vi.fn(async () => {}),
+			where: vi.fn(() => ({
+				returning: vi.fn(async () => (claimed ? [{ id: importJobId }] : [])),
+			})),
 		})),
 	})) as unknown as Database["update"];
 }
@@ -262,7 +264,27 @@ describe("import.service", () => {
 				userId,
 				{ Title: "title" },
 			)).rejects.toThrow("queue unavailable");
-			expect(update).not.toHaveBeenCalled();
+			expect(update).toHaveBeenCalledTimes(2);
+		});
+
+		it("throws if a concurrent confirm already claimed the job", async () => {
+			const update = createUpdateMock(false);
+			const db = {
+				select: createJobSelect({ status: "completed", colorMapping: {}, parsedRows: [{ data: { Title: "Bug" }, colorHex: null }] }),
+				update,
+			} as unknown as Database;
+
+			await expect(confirmImport(
+				db,
+				{} as Queue,
+				projectId,
+				importJobId,
+				userId,
+				{ Title: "title" },
+			)).rejects.toMatchObject({
+				code: "IMPORT_ALREADY_CONFIRMED",
+				statusCode: 409,
+			});
 		});
 	});
 

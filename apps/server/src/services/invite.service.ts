@@ -93,7 +93,13 @@ export async function listPendingInvites(db: Database, teamId: string) {
 			createdAt: invites.createdAt,
 		})
 		.from(invites)
-		.where(and(eq(invites.teamId, teamId), isNull(invites.acceptedAt)))
+		.where(
+			and(
+				eq(invites.teamId, teamId),
+				isNull(invites.acceptedAt),
+				gt(invites.expiresAt, new Date()),
+			),
+		)
 		.orderBy(desc(invites.createdAt));
 }
 

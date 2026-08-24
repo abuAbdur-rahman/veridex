@@ -224,6 +224,11 @@ export function parseCsvFileForImport(csvText: string): ParseForImportResult {
 interface ImportWorkerDeps {
 	db: Database;
 	boss: PgBoss;
+	logger?: {
+		error: (...args: unknown[]) => void;
+		warn: (...args: unknown[]) => void;
+		info: (...args: unknown[]) => void;
+	};
 }
 
 const ISSUE_STATUSES = [
@@ -361,7 +366,7 @@ async function markImportFailed(db: Database, importJobId: string, error: unknow
 }
 
 export function registerImportWorker(deps: ImportWorkerDeps) {
-	const { db, boss } = deps;
+	const { db, boss, logger } = deps;
 
 	return boss.work("import-insert", async (jobs: Array<{ data: { importJobId: string; worksheetIndex?: number; columnMapping: Record<string, string>; colorMapping?: Record<string, string>; defaultStatus?: string; statusAssigneeMapping?: Record<string, string[]> } }>) => {
 		for (const job of jobs) {
@@ -530,9 +535,12 @@ export function registerImportWorker(deps: ImportWorkerDeps) {
 								type: "issue:created",
 								payload: { issueId: insertedId, projectId: importJob.projectId },
 							});
+						} else {
+							failed++;
+							errors.push({ row: i + 2, error: "Duplicate issue title" });
 						}
 					} catch (err) {
-						console.error("Import row failed", err);
+						logger?.warn({ err }, "Import row failed");
 						failed++;
 						errors.push({ row: i + 2, error: err instanceof Error ? err.message : "Unknown error" });
 					}
@@ -550,11 +558,11 @@ export function registerImportWorker(deps: ImportWorkerDeps) {
 					})
 					.where(eq(importJobs.id, importJobId));
 			} catch (err) {
-				console.error("Import job failed", err);
+				logger?.error({ err }, "Import job failed");
 				try {
 					await markImportFailed(db, importJobId, err);
 				} catch (markFailedError) {
-					console.error("Failed to mark import job as failed", markFailedError);
+					logger?.error({ err: markFailedError }, "Failed to mark import job as failed");
 				}
 			}
 		}

@@ -101,6 +101,7 @@ function createProjectMemberDatabase(options: {
 	updateReturns?: Array<Record<string, unknown>>;
 	deleteReturns?: Array<Record<string, unknown>>;
 	updateProjectReturns?: Array<Record<string, unknown>>;
+	adminCount?: number;
 } = {}) {
 	const projectRef = options.projectRef ?? [
 		{ teamId: "team-1", createdBy: "creator-1" },
@@ -110,9 +111,10 @@ function createProjectMemberDatabase(options: {
 	const updateReturns = options.updateReturns ?? [{ userId: "user-2" }];
 	const deleteReturns = options.deleteReturns ?? [{ userId: "user-2" }];
 	const updateProjectReturns = options.updateProjectReturns ?? [{ id: "project-1", name: "Renamed" }];
+	const adminCount = options.adminCount ?? 3;
 	const addedAt = new Date("2026-08-01T00:00:00.000Z");
 	return {
-		select: vi.fn(() => ({
+		select: vi.fn((selection?: Record<string, unknown>) => ({
 			from: vi.fn((table: unknown) => {
 				if (table === project) {
 					return {
@@ -129,6 +131,11 @@ function createProjectMemberDatabase(options: {
 					};
 				}
 				if (table === projectMember) {
+					if (selection && "value" in selection) {
+						return {
+							where: vi.fn(async () => [{ value: adminCount }]),
+						};
+					}
 					return {
 						where: vi.fn(() => ({
 							limit: vi.fn(async () => existingMembers),
@@ -365,6 +372,17 @@ describe("project service", () => {
 		});
 	});
 
+	it("rejects demoting the last remaining admin", async () => {
+		const db = createProjectMemberDatabase({ adminCount: 1 });
+
+		await expect(
+			updateProjectMemberRole(db, "project-1", "user-2", "qa"),
+		).rejects.toMatchObject({
+			code: "LAST_ADMIN_PROTECTED",
+			statusCode: 409,
+		});
+	});
+
 	it("removes a non-creator member", async () => {
 		const db = createProjectMemberDatabase();
 
@@ -393,6 +411,17 @@ describe("project service", () => {
 			removeProjectMember(db, "project-1", "user-2"),
 		).rejects.toMatchObject({
 			code: "CREATOR_PROTECTED",
+			statusCode: 409,
+		});
+	});
+
+	it("rejects removing the last remaining admin", async () => {
+		const db = createProjectMemberDatabase({ adminCount: 1 });
+
+		await expect(
+			removeProjectMember(db, "project-1", "user-2"),
+		).rejects.toMatchObject({
+			code: "LAST_ADMIN_PROTECTED",
 			statusCode: 409,
 		});
 	});

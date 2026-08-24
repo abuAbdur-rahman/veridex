@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import type { Database } from "../db/client.js";
 import {
 	project,
@@ -221,6 +221,25 @@ export async function addProjectMember(
 	return member;
 }
 
+async function assertNotLastAdmin(
+	db: Database,
+	projectId: string,
+): Promise<void> {
+	const [{ value }] = await db
+		.select({ value: count() })
+		.from(projectMember)
+		.where(
+			and(eq(projectMember.projectId, projectId), eq(projectMember.role, "admin")),
+		);
+	if (Number(value) <= 1) {
+		throw new AppError(
+			"LAST_ADMIN_PROTECTED",
+			"The project must keep at least one admin",
+			409,
+		);
+	}
+}
+
 export async function updateProjectMemberRole(
 	db: Database,
 	projectId: string,
@@ -236,6 +255,10 @@ export async function updateProjectMemberRole(
 			"The project creator cannot be demoted",
 			409,
 		);
+	}
+
+	if (role !== "admin") {
+		await assertNotLastAdmin(db, projectId);
 	}
 
 	const [member] = await db
@@ -267,6 +290,8 @@ export async function removeProjectMember(
 			409,
 		);
 	}
+
+	await assertNotLastAdmin(db, projectId);
 
 	const [member] = await db
 		.delete(projectMember)

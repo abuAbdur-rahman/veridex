@@ -100,7 +100,7 @@ export function broadcast(projectId: string, event: WsEvent): void {
 	if (!publisher) return;
 	const envelope: BroadcastEnvelope = { originId: INSTANCE_ID, event };
 	const payload = JSON.stringify(envelope);
-	if (Buffer.byteLength(payload, "utf8") > MAX_PAYLOAD_BYTES) return;
+	if (Buffer.byteLength(payload, "utf8") >= MAX_PAYLOAD_BYTES) return;
 	void publisher(payload);
 }
 
@@ -124,16 +124,50 @@ export function handleRemoteBroadcast(raw: string): void {
 	deliverLocally(envelope.event.payload.projectId, envelope.event);
 }
 
+const EVENT_TYPES = new Set<string>([
+	"issue:created",
+	"issue:updated",
+	"issue:status_changed",
+	"issue:assigned",
+	"issue:deleted",
+	"comment:created",
+	"comment:updated",
+	"comment:deleted",
+]);
+
+const STATUSES = new Set<string>(["backlog", "in_progress", "in_qa", "verified", "rejected"]);
+const SOURCES = new Set<string>(["web", "mcp", "import"]);
+
+function hasStringFields(payload: object, fields: string[]): boolean {
+	return fields.every((field) => typeof (payload as Record<string, unknown>)[field] === "string");
+}
+
 function isWsEvent(value: unknown): value is WsEvent {
 	if (typeof value !== "object" || value === null) return false;
 	const candidate = value as { type?: unknown; payload?: unknown };
-	if (typeof candidate.type !== "string") return false;
 	if (
+		typeof candidate.type !== "string" ||
+		!EVENT_TYPES.has(candidate.type) ||
 		typeof candidate.payload !== "object" ||
-		candidate.payload === null ||
-		typeof (candidate.payload as { projectId?: unknown }).projectId !== "string"
+		candidate.payload === null
 	) {
 		return false;
 	}
-	return true;
+	const payload = candidate.payload as Record<string, unknown>;
+	switch (candidate.type) {
+		case "issue:status_changed":
+			return (
+				hasStringFields(payload, ["issueId", "projectId"]) &&
+				typeof payload.toStatus === "string" &&
+				STATUSES.has(payload.toStatus) &&
+				typeof payload.source === "string" &&
+				SOURCES.has(payload.source)
+			);
+		case "comment:created":
+		case "comment:updated":
+		case "comment:deleted":
+			return hasStringFields(payload, ["commentId", "issueId", "projectId"]);
+		default:
+			return hasStringFields(payload, ["issueId", "projectId"]);
+	}
 }

@@ -2,7 +2,7 @@ import type { Queue } from "../jobs/queue.js";
 import type { Database } from "../db/client.js";
 import { importJobs } from "../db/schema/index.js";
 import { eq, and } from "drizzle-orm";
-import { NotFoundError, ForbiddenError, ValidationError } from "../lib/errors.js";
+import { AppError, NotFoundError, ForbiddenError, ValidationError } from "../lib/errors.js";
 import { projectMember } from "../db/schema/project.js";
 import {
 	parseExcelFileForImport,
@@ -268,15 +268,28 @@ export async function confirmImport(
 	if (Object.keys(normalizedStatusAssigneeMapping).length > 0) {
 		payload.statusAssigneeMapping = normalizedStatusAssigneeMapping;
 	}
-	await queue.send("import-insert", payload);
-	await db
+	const [claimed] = await db
 		.update(importJobs)
-		.set({
-			status: "pending",
-			columnMapping,
-			colorMapping: colorMapping ?? job.colorMapping,
-		})
-		.where(eq(importJobs.id, importJobId));
+		.set({ status: "pending", columnMapping, colorMapping: colorMapping ?? job.colorMapping })
+		.where(
+			and(
+				eq(importJobs.id, importJobId),
+				eq(importJobs.status, "completed"),
+			),
+		)
+		.returning({ id: importJobs.id });
+	if (!claimed) {
+		throw new AppError("IMPORT_ALREADY_CONFIRMED", "Import has already been confirmed", 409);
+	}
+	try {
+		await queue.send("import-insert", payload);
+	} catch (error) {
+		await db
+			.update(importJobs)
+			.set({ status: "completed" })
+			.where(eq(importJobs.id, importJobId));
+		throw error;
+	}
 
 	return { importJobId };
 }
