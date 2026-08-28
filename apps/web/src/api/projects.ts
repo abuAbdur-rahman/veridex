@@ -114,7 +114,8 @@ export function addProjectMember(projectId: string, input: { userId: string; rol
 export function updateProjectMemberRole(projectId: string, userId: string, role: ProjectRole) {
 	return apiRequest(
 		`/api/projects/${encodeURIComponent(projectId)}/members/${encodeURIComponent(userId)}`,
-		(value): value is null => value === null,
+		(value): value is { userId: string } =>
+			isRecord(value) && typeof value.userId === "string",
 		{ method: "PATCH", body: JSON.stringify({ role }) },
 	);
 }

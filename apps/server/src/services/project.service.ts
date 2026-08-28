@@ -1,4 +1,4 @@
-import { and, count, eq } from "drizzle-orm";
+import { and, count, eq, ne } from "drizzle-orm";
 import type { Database } from "../db/client.js";
 import {
 	project,
@@ -221,17 +221,26 @@ export async function addProjectMember(
 	return member;
 }
 
+/**
+ * Verifies at least one admin other than `excludeUserId` remains. Callers must
+ * only invoke this when the target member is currently an admin.
+ */
 async function assertNotLastAdmin(
 	db: Database,
 	projectId: string,
+	excludeUserId: string,
 ): Promise<void> {
 	const [{ value }] = await db
 		.select({ value: count() })
 		.from(projectMember)
 		.where(
-			and(eq(projectMember.projectId, projectId), eq(projectMember.role, "admin")),
+			and(
+				eq(projectMember.projectId, projectId),
+				eq(projectMember.role, "admin"),
+				ne(projectMember.userId, excludeUserId),
+			),
 		);
-	if (Number(value) <= 1) {
+	if (Number(value) < 1) {
 		throw new AppError(
 			"LAST_ADMIN_PROTECTED",
 			"The project must keep at least one admin",
@@ -258,7 +267,20 @@ export async function updateProjectMemberRole(
 	}
 
 	if (role !== "admin") {
-		await assertNotLastAdmin(db, projectId);
+		const [member] = await db
+			.select({ role: projectMember.role })
+			.from(projectMember)
+			.where(
+				and(
+					eq(projectMember.projectId, projectId),
+					eq(projectMember.userId, userId),
+				),
+			)
+			.limit(1);
+		if (!member) throw new NotFoundError("Project member");
+		if (member.role === "admin") {
+			await assertNotLastAdmin(db, projectId, userId);
+		}
 	}
 
 	const [member] = await db
@@ -273,6 +295,7 @@ export async function updateProjectMemberRole(
 		.returning({ userId: projectMember.userId });
 
 	if (!member) throw new NotFoundError("Project member");
+	return member;
 }
 
 export async function removeProjectMember(
@@ -291,9 +314,22 @@ export async function removeProjectMember(
 		);
 	}
 
-	await assertNotLastAdmin(db, projectId);
-
 	const [member] = await db
+		.select({ role: projectMember.role })
+		.from(projectMember)
+		.where(
+			and(
+				eq(projectMember.projectId, projectId),
+				eq(projectMember.userId, userId),
+			),
+		)
+		.limit(1);
+	if (!member) throw new NotFoundError("Project member");
+	if (member.role === "admin") {
+		await assertNotLastAdmin(db, projectId, userId);
+	}
+
+	const [deleted] = await db
 		.delete(projectMember)
 		.where(
 			and(
@@ -303,5 +339,5 @@ export async function removeProjectMember(
 		)
 		.returning({ userId: projectMember.userId });
 
-	if (!member) throw new NotFoundError("Project member");
+	if (!deleted) throw new NotFoundError("Project member");
 }

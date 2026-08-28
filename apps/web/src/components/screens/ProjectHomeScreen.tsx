@@ -91,7 +91,7 @@ export function ProjectHomeScreen({ projectId, view, query, issueId }: ProjectHo
 	}
 	async function moveIssue(issue: Issue, status: IssueStatus, suppliedNote?: string) {
 		let note = suppliedNote;
-		if (requiresAuditNote(status) && !note) {
+		if (requiresAuditNote(issue.status, status) && !note) {
 			note = window.prompt("Add an audit note for this status change")?.trim();
 			if (!note) return;
 		}
