@@ -341,11 +341,13 @@ describe("project service", () => {
 	});
 
 	it("updates a non-creator member's role", async () => {
-		const db = createProjectMemberDatabase();
+		const db = createProjectMemberDatabase({
+			existingMembers: [{ userId: "user-2", role: "qa" }],
+		});
 
 		await expect(
 			updateProjectMemberRole(db, "project-1", "user-2", "qa"),
-		).resolves.toBeUndefined();
+		).resolves.toEqual({ userId: "user-2" });
 	});
 
 	it("rejects updating a user who is not a project member", async () => {
@@ -373,7 +375,10 @@ describe("project service", () => {
 	});
 
 	it("rejects demoting the last remaining admin", async () => {
-		const db = createProjectMemberDatabase({ adminCount: 1 });
+		const db = createProjectMemberDatabase({
+			adminCount: 0,
+			existingMembers: [{ userId: "user-2", role: "admin" }],
+		});
 
 		await expect(
 			updateProjectMemberRole(db, "project-1", "user-2", "qa"),
@@ -383,8 +388,21 @@ describe("project service", () => {
 		});
 	});
 
+	it("lets an admin demote a non-admin even when they are the only admin", async () => {
+		const db = createProjectMemberDatabase({
+			adminCount: 1,
+			existingMembers: [{ userId: "user-2", role: "qa" }],
+		});
+
+		await expect(
+			updateProjectMemberRole(db, "project-1", "user-2", "tester"),
+		).resolves.toEqual({ userId: "user-2" });
+	});
+
 	it("removes a non-creator member", async () => {
-		const db = createProjectMemberDatabase();
+		const db = createProjectMemberDatabase({
+			existingMembers: [{ userId: "user-2", role: "qa" }],
+		});
 
 		await expect(
 			removeProjectMember(db, "project-1", "user-2"),
@@ -416,7 +434,10 @@ describe("project service", () => {
 	});
 
 	it("rejects removing the last remaining admin", async () => {
-		const db = createProjectMemberDatabase({ adminCount: 1 });
+		const db = createProjectMemberDatabase({
+			adminCount: 0,
+			existingMembers: [{ userId: "user-2", role: "admin" }],
+		});
 
 		await expect(
 			removeProjectMember(db, "project-1", "user-2"),

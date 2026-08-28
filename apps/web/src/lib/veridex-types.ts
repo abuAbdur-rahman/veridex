@@ -184,6 +184,17 @@ export function isRoleView(value: unknown): value is RoleView {
 	return typeof value === "string" && (ROLE_VIEWS as readonly string[]).includes(value);
 }
 
-export function requiresAuditNote(toStatus: IssueStatus): boolean {
-	return toStatus === "backlog" || toStatus === "in_progress";
+const STATUS_ORDER: Record<IssueStatus, number> = {
+	backlog: 0,
+	in_progress: 1,
+	in_qa: 2,
+	verified: 3,
+	rejected: 4,
+};
+
+/** Mirrors the server rule: backward transitions need an audit note; moving to
+ * "rejected" is always treated as forward by the server. */
+export function requiresAuditNote(fromStatus: IssueStatus, toStatus: IssueStatus): boolean {
+	if (toStatus === "rejected") return false;
+	return STATUS_ORDER[fromStatus] >= STATUS_ORDER[toStatus];
 }

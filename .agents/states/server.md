@@ -1,6 +1,11 @@
 # Server State
 
-Last updated: 2026-08-24
+Last updated: 2026-08-24 (production-readiness fixes)
+
+## Production-Readiness Fixes (this session)
+
+- Removed the undocumented `verified-issue-cleanup` hourly job (hard-deleted verified issues >24h, cascading away status history). Worker file and test deleted; worker registration removed from `app.ts`; `server.ts` now calls `queue.unschedule("verified-issue-cleanup")` to purge lingering schedules from existing databases.
+- Fixed the last-admin false positive in `project.service.ts`: `assertNotLastAdmin(db, projectId, excludeUserId)` now counts admins excluding the target and is invoked only when the target member is currently an admin. Admins can again remove/demote non-admin members in single-admin projects. New regression tests cover both paths.
 
 ## Current Boundary
 
@@ -140,7 +145,7 @@ Project role authorization uses `requireProjectRole(request, projectId, [...])`.
 
 - Project creator is added as `admin` at creation, so at least one admin always exists.
 - The creator (`project.createdBy`) cannot be demoted or removed; attempts return `409 CREATOR_PROTECTED`.
-- No actor/owner parameter: project admins may grant `admin`, and there are no last-admin or self-removal checks.
+- Last-admin protection: `assertNotLastAdmin` is enforced when removing or demoting an existing `admin` (counts admins excluding the target); non-admin members can still be removed/demoted without triggering the check. No self-removal check beyond creator protection.
 - Slug conflicts map to `409 PROJECT_SLUG_TAKEN` (constraint `project_team_slug_unique`).
 - Adding a user who is already a project member maps to `409 MEMBER_ALREADY_EXISTS` (the `project_member` primary key would otherwise surface as an untyped 500).
 - Role updates and removals verify the target row exists via `.returning()`; a non-member target returns `404 NOT_FOUND` instead of silently succeeding.

@@ -3,10 +3,6 @@ import { buildApp } from "./app.js";
 import { parseEnvironment } from "./config.js";
 import { createQueue } from "./jobs/queue.js";
 import {
-	VERIFIED_ISSUE_CLEANUP_QUEUE,
-	VERIFIED_ISSUE_CLEANUP_SCHEDULE,
-} from "./jobs/verified-issue-cleanup.worker.js";
-import {
 	attachBroadcastPublisher,
 	BROADCAST_CHANNEL,
 	handleRemoteBroadcast,
@@ -16,12 +12,11 @@ import { createPostgresEventBus } from "./ws/event-bus.js";
 const environment = parseEnvironment(process.env);
 const queue = await createQueue(environment.DATABASE_URL_UNPOOLED);
 await queue.createQueue("import-insert");
-await queue.createQueue(VERIFIED_ISSUE_CLEANUP_QUEUE);
-await queue.schedule(
-	VERIFIED_ISSUE_CLEANUP_QUEUE,
-	VERIFIED_ISSUE_CLEANUP_SCHEDULE,
-	null,
-);
+// Purge any lingering schedule from the removed verified-issue cleanup job
+// (its hard-delete cascade destroyed issues plus their audit history).
+await queue.unschedule("verified-issue-cleanup").catch((error) => {
+	app.log.warn({ error }, "failed to unschedule verified-issue-cleanup");
+});
 const app = buildApp(environment, { queue });
 
 const eventBus = await createPostgresEventBus(environment.DATABASE_URL_UNPOOLED, {

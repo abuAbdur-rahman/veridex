@@ -1,6 +1,13 @@
 # Veridex Frontend Handoff
 
-Updated: 2026-08-24
+Updated: 2026-08-24 (production-readiness fixes)
+
+## Production-Readiness Fixes (this session)
+
+- `isServerMemberRef` (`api/issues.ts`) now accepts `image: string | null`, matching the server member projection; OAuth avatars no longer invalidate entire issue responses. This also fixed the previously failing `ProjectHomeScreen` board-render test.
+- `updateProjectMemberRole` (`api/projects.ts`) now validates the server's `{ userId }` response instead of `null`; role changes no longer report INVALID_RESPONSE after succeeding.
+- `requiresAuditNote(fromStatus, toStatus)` mirrors the server's order-based backward-transition rule, so `verified → in_qa` now prompts for the required note in both `ProjectHomeScreen.moveIssue` and `IssueDetailPanel.move`.
+- `SettingsScreen` no longer persists to the demo store: name/username/default-role render read-only from `GET /api/me`, theme selection stays functional via next-themes, and the fake "Save changes"/"Reset demo" controls are removed.
 
 ## Current State
 

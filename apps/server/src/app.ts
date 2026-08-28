@@ -24,7 +24,6 @@ import { issueImageRoutes } from "./routes/issue-images.js";
 import { importRoutes } from "./routes/import.js";
 import type { Queue } from "./jobs/queue.js";
 import { registerImportWorker } from "./jobs/import.worker.js";
-import { registerVerifiedIssueCleanupWorker } from "./jobs/verified-issue-cleanup.worker.js";
 import { devAuthRoutes } from "./routes/dev-auth.js";
 import { apiTokenRoutes } from "./routes/api-tokens.js";
 import { commentRoutes } from "./routes/comments.js";
@@ -197,10 +196,6 @@ export function buildApp(
 				db,
 				boss: queue,
 				logger: app.log,
-			});
-			await registerVerifiedIssueCleanupWorker({
-				db,
-				boss: queue,
 			});
 		});
 	}
