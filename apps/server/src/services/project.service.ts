@@ -295,6 +295,7 @@ export async function updateProjectMemberRole(
 		.returning({ userId: projectMember.userId });
 
 	if (!member) throw new NotFoundError("Project member");
+	return member;
 }
 
 export async function removeProjectMember(
@@ -338,5 +339,5 @@ export async function removeProjectMember(
 		)
 		.returning({ userId: projectMember.userId });
 
-	if (!member) throw new NotFoundError("Project member");
+	if (!deleted) throw new NotFoundError("Project member");
 }
