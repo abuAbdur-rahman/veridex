@@ -119,7 +119,7 @@ export function IssueDetailPanel({
 	}
 	async function move(status: IssueStatus) {
 		let note: string | undefined;
-		if (requiresAuditNote(status)) {
+		if (requiresAuditNote(issue.status, status)) {
 			note = window.prompt("Add an audit note for this status change")?.trim();
 			if (!note) return;
 		}

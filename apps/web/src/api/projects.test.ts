@@ -52,12 +52,12 @@ describe("projects API", () => {
 			.fn()
 			.mockResolvedValueOnce(Response.json([member]))
 			.mockResolvedValueOnce(new Response(JSON.stringify(ref), { status: 201 }))
-			.mockResolvedValueOnce(new Response(null, { status: 200 }))
+			.mockResolvedValueOnce(new Response(JSON.stringify({ userId: "u2" }), { status: 200 }))
 			.mockResolvedValueOnce(new Response(null, { status: 204 }));
 		vi.stubGlobal("fetch", fetchMock);
 		await expect(listProjectMembers("p1")).resolves.toEqual([member]);
 		await expect(addProjectMember("p1", { userId: "u2", role: "qa" })).resolves.toEqual(ref);
-		await expect(updateProjectMemberRole("p1", "u2", "dev")).resolves.toBeNull();
+		await expect(updateProjectMemberRole("p1", "u2", "dev")).resolves.toEqual({ userId: "u2" });
 		await expect(removeProjectMember("p1", "u2")).resolves.toBeNull();
 	});
 	it("deletes a project", async () => {

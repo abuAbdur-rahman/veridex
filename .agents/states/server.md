@@ -1,6 +1,11 @@
 # Server State
 
-Last updated: 2026-08-24
+Last updated: 2026-08-24 (production-readiness fixes)
+
+## Production-Readiness Fixes (this session)
+
+- Removed the undocumented `verified-issue-cleanup` hourly job (hard-deleted verified issues >24h, cascading away status history). Worker file and test deleted; worker registration removed from `app.ts`; `server.ts` now calls `queue.unschedule("verified-issue-cleanup")` to purge lingering schedules from existing databases.
+- Fixed the last-admin false positive in `project.service.ts`: `assertNotLastAdmin(db, projectId, excludeUserId)` now counts admins excluding the target and is invoked only when the target member is currently an admin. Admins can again remove/demote non-admin members in single-admin projects. New regression tests cover both paths.
 
 ## Current Boundary
 
