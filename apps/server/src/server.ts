@@ -14,7 +14,9 @@ const queue = await createQueue(environment.DATABASE_URL_UNPOOLED);
 await queue.createQueue("import-insert");
 // Purge any lingering schedule from the removed verified-issue cleanup job
 // (its hard-delete cascade destroyed issues plus their audit history).
-await queue.unschedule("verified-issue-cleanup").catch(() => undefined);
+await queue.unschedule("verified-issue-cleanup").catch((error) => {
+	app.log.warn({ error }, "failed to unschedule verified-issue-cleanup");
+});
 const app = buildApp(environment, { queue });
 
 const eventBus = await createPostgresEventBus(environment.DATABASE_URL_UNPOOLED, {
