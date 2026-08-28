@@ -347,7 +347,7 @@ describe("project service", () => {
 
 		await expect(
 			updateProjectMemberRole(db, "project-1", "user-2", "qa"),
-		).resolves.toBeUndefined();
+		).resolves.toEqual({ userId: "user-2" });
 	});
 
 	it("rejects updating a user who is not a project member", async () => {
@@ -396,7 +396,7 @@ describe("project service", () => {
 
 		await expect(
 			updateProjectMemberRole(db, "project-1", "user-2", "tester"),
-		).resolves.toBeUndefined();
+		).resolves.toEqual({ userId: "user-2" });
 	});
 
 	it("removes a non-creator member", async () => {
