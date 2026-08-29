@@ -6,6 +6,7 @@ import { LogoMark } from "@/components/layout/LogoMark";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { signInWithProvider, type SocialProvider } from "@/api/auth";
 import { ApiError } from "@/api/client";
+import { apiUrl } from "@/lib/api-url";
 
 export function LoginScreen({ redirectTo = "/dashboard" }: { redirectTo?: string }) {
 	const [pendingProvider, setPendingProvider] = useState<SocialProvider | "development" | null>(null);
@@ -15,7 +16,7 @@ export function LoginScreen({ redirectTo = "/dashboard" }: { redirectTo?: string
 		if (pendingProvider) return;
 		setPendingProvider("development");
 		try {
-			const response = await fetch("/api/dev/test-session", {
+			const response = await fetch(apiUrl("/api/dev/test-session"), {
 				method: "POST",
 				credentials: "include",
 			});

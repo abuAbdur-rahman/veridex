@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildApp, redactInviteTokenUrl } from "./app.js";
+import { buildApp, redactInviteTokenUrl } from "./app-factory.js";
 import type { Environment } from "./config.js";
 import { createDb } from "./db/client.js";
 import { AppError } from "./lib/errors.js";
