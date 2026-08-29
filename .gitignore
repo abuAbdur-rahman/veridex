@@ -22,4 +22,4 @@ temp_interactive_push.bat
 .gitignore
 .vercel
 .env*
-!.env.prod
+!**/.env.prod
