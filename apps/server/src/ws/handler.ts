@@ -87,6 +87,21 @@ export async function websocketHandler(
 	joinRoom(projectId, socket);
 	let lastPingAt = 0;
 
+	// Render's LB has an idle-connection timeout distinct from its 15-min service sleep.
+	// Send WebSocket ping frames every 30s so an idle connection doesn't get dropped.
+	const heartbeatInterval = setInterval(() => {
+		if (socket.readyState === WebSocket.OPEN) {
+			try {
+				socket.ping();
+			} catch {
+				// ignore — close handler will clean up
+			}
+		}
+	}, 30_000);
+	socket.on("pong", () => {
+		// client auto-responds; no action needed, just keeps connection alive
+	});
+
 	// Revalidates session and membership without waiting for a client ping so
 	// revoked access cannot linger on a silent connection.
 	const revalidateConnection = async (): Promise<void> => {
@@ -160,6 +175,7 @@ export async function websocketHandler(
 
 	socket.on("close", () => {
 		clearInterval(revalidationTimer);
+		clearInterval(heartbeatInterval);
 		leaveRoom(projectId, socket);
 	});
 }
