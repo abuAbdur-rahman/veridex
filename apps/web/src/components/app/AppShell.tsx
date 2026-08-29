@@ -43,6 +43,7 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { apiUrl } from "@/lib/api-url";
 import { deriveProfile, type DerivedProfile } from "@/api/session";
 import { createTeam } from "@/api/teams";
 import { useMe } from "@/queries/session";
@@ -189,7 +190,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 										setLogoutBusy(true);
 										setLogoutError("");
 										try {
-											const response = await fetch("/api/auth/sign-out", {
+											const response = await fetch(apiUrl("/api/auth/sign-out"), {
 												method: "POST",
 												credentials: "include",
 											});

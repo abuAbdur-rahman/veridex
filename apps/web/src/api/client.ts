@@ -15,13 +15,15 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null;
 }
 
+import { apiUrl } from "@/lib/api-url";
+
 export async function apiRequest<T>(
 	path: string,
 	validate: (value: unknown) => value is T,
 	init?: RequestInit,
 ) {
 	const hasJsonBody = init?.body !== undefined && !(init.body instanceof FormData);
-	const response = await fetch(path, {
+	const response = await fetch(apiUrl(path), {
 		credentials: "include",
 		...init,
 		headers: {
