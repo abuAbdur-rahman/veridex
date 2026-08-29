@@ -6,7 +6,9 @@ import { NewTokenModal } from "@/components/screens/NewTokenModal";
 import { useApiTokens, useCreateApiToken, useRevokeApiToken } from "@/queries/tokens";
 import { useMcpAccessSummary, useMcpActivity } from "@/queries/mcp";
 
-const endpoint = import.meta.env.VITE_MCP_URL as string | undefined;
+import { resolveMcpUrl } from "@/lib/api-url";
+
+const endpoint = resolveMcpUrl();
 
 export function McpScreen() {
 	const tokensQuery = useApiTokens();

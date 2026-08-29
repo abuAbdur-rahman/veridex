@@ -1,4 +1,5 @@
 import { ApiError, isRecord, readErrorText } from "@/api/client";
+import { apiUrl } from "@/lib/api-url";
 
 export type SocialProvider = "google" | "github";
 
@@ -6,7 +7,7 @@ export async function signInWithProvider(provider: SocialProvider, callbackPath 
 	const safeCallbackPath =
 		callbackPath.startsWith("/") && !callbackPath.startsWith("//") ? callbackPath : "/dashboard";
 	const callbackURL = `${window.location.origin}${safeCallbackPath}`;
-	const response = await fetch("/api/auth/sign-in/social", {
+	const response = await fetch(apiUrl("/api/auth/sign-in/social"), {
 		method: "POST",
 		credentials: "include",
 		headers: { "Content-Type": "application/json" },

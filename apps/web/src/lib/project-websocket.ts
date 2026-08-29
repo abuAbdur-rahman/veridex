@@ -1,4 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
+import { wsUrl } from "@/lib/api-url";
 import { issueCommentsQueryKey, issueHistoryQueryKey, issueQueryKey, issuesQueryKey } from "@/queries/issues";
 
 export type ProjectSocketEvent =
@@ -30,8 +31,7 @@ const RECONNECT_MAX_DELAY = 30_000;
 const STABLE_CONNECTION_MS = 10_000;
 
 function websocketUrl(projectId: string) {
-	const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-	return `${protocol}//${window.location.host}/ws?projectId=${encodeURIComponent(projectId)}`;
+	return wsUrl(`/ws?projectId=${encodeURIComponent(projectId)}`);
 }
 
 export function connectProjectWebSocket(
