@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { buildApp } from "./app.js";
+import { buildApp } from "./app-factory.js";
 import { parseEnvironment } from "./config.js";
 import { createQueue } from "./jobs/queue.js";
 import {
