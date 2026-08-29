@@ -1,4 +1,5 @@
 import "dotenv/config";
+import Fastify from "fastify";
 import { buildApp } from "./app-factory.js";
 import { parseEnvironment } from "./config.js";
 import { createQueue } from "./jobs/queue.js";
@@ -12,12 +13,14 @@ import { createPostgresEventBus } from "./ws/event-bus.js";
 const environment = parseEnvironment(process.env);
 const queue = await createQueue(environment.DATABASE_URL_UNPOOLED);
 await queue.createQueue("import-insert");
+const app = buildApp(environment, { queue });
 // Purge any lingering schedule from the removed verified-issue cleanup job
 // (its hard-delete cascade destroyed issues plus their audit history).
 await queue.unschedule("verified-issue-cleanup").catch((error) => {
 	app.log.warn({ error }, "failed to unschedule verified-issue-cleanup");
 });
-const app = buildApp(environment, { queue });
+// Vercel Fastify preset detection: ensure entrypoint directly imports fastify
+void Fastify;
 
 const eventBus = await createPostgresEventBus(environment.DATABASE_URL_UNPOOLED, {
 	channel: BROADCAST_CHANNEL,
