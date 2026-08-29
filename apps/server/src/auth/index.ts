@@ -33,12 +33,25 @@ export function createAuth(db: Database, environment: Environment) {
 		secret: environment.BETTER_AUTH_SECRET,
 		advanced: {
 			useSecureCookies: environment.NODE_ENV === "production",
+			// TODO(domain-migration): once custom domain exists (app.<domain> + api.<domain>),
+			// switch to crossSubDomainCookies with domain: ".<domain>" to make this same-site.
+			// Until then, frontend (Vercel) and backend (Render) are cross-site, so we need
+			// SameSite=None; Secure for cookies to be sent. Do not set an explicit domain.
 			database: {
 				// Veridex schemas validate user ids as UUID strings; Better Auth's
 				// default ids are alphanumeric and would fail those checks. A
 				// function is required because auth.user.id is a plain text
 				// column without a gen_random_uuid() database default.
 				generateId: () => crypto.randomUUID(),
+			},
+			cookies: {
+				session_token: {
+					attributes: {
+						sameSite: environment.NODE_ENV === "production" ? "none" : "lax",
+						secure: environment.NODE_ENV === "production",
+						httpOnly: true,
+					},
+				},
 			},
 		},
 		emailAndPassword: {
