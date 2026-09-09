@@ -1,0 +1,2 @@
+DROP INDEX "issue_status_history_mcp_activity_idx";--> statement-breakpoint
+CREATE INDEX "issue_status_history_mcp_activity_idx" ON "issue_status_history" USING btree ("changed_by","changed_at" DESC NULLS LAST) WHERE "issue_status_history"."source" = 'mcp';

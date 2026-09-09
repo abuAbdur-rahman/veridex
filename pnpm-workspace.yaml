@@ -1,0 +1,17 @@
+packages:
+  - apps/*
+
+allowBuilds:
+  '@prisma/client': true
+  better-sqlite3: true
+  cpu-features: true
+  esbuild: true
+  protobufjs: true
+  ssh2: true
+
+onlyBuiltDependencies:
+  - better-sqlite3
+  - cpu-features
+  - esbuild
+  - protobufjs
+  - ssh2
