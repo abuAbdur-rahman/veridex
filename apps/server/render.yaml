@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: veridex-server
+    runtime: node
+    plan: free
+    rootDir: apps/server
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @veridex/server build
+    startCommand: pnpm --filter @veridex/server start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: TRUST_PROXY
+        value: "true"
+      # DATABASE_URL, DATABASE_URL_UNPOOLED, BETTER_AUTH_SECRET, BETTER_AUTH_URL,
+      # WEB_ORIGIN, R2_*, GOOGLE_*, GITHUB_* — set as secrets in the Render
+      # dashboard, not committed here.

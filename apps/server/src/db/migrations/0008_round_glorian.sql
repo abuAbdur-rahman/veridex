@@ -1,0 +1,1 @@
+ALTER TABLE "issues" ADD COLUMN "image_url" text;

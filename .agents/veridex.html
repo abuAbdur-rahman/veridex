@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Veridex — A QA-aware issue tracker built to replace the spreadsheet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #F1F3F5;
+    --bg-alt: #E7EAED;
+    --surface: #FFFFFF;
+    --ink: #171E26;
+    --ink-soft: #4A5561;
+    --line: #D7DCE1;
+    --line-soft: #E4E7EA;
+
+    --pass: #1C8C6B;
+    --pass-bg: #E4F3EE;
+    --pending: #B8792A;
+    --pending-bg: #F6ECDD;
+    --block: #AF3B3B;
+    --block-bg: #F5E5E5;
+    --dev: #2F5DAA;
+    --dev-bg: #E4EBF6;
+
+    /* interactive accent — separate system from status colors above.
+       status colors answer "what is this ticket"; accent answers
+       "what can I click / what did I just select". Never mix the two. */
+    --accent: #EA6A0C;
+    --accent-strong: #C9560A;
+    --accent-bg: #FDECD9;
+    --accent-ring: rgba(234,106,12,0.35);
+
+    --nav-bg: rgba(241,243,245,0.86);
+
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+    --sans: 'Inter', -apple-system, sans-serif;
+
+    --radius: 10px;
+  }
+
+  [data-theme="dark"]{
+    --bg: #12161B;
+    --bg-alt: #171D24;
+    --surface: #1B2229;
+    --ink: #E7ECEF;
+    --ink-soft: #93A0AC;
+    --line: #2B333C;
+    --line-soft: #232A32;
+
+    --pass: #4FCBA3;      --pass-bg: #16302A;
+    --pending: #E3A75C;   --pending-bg: #362A16;
+    --block: #E28080;     --block-bg: #362020;
+    --dev: #7FAAE6;       --dev-bg: #1D2A3C;
+
+    --accent: #FB923C;
+    --accent-strong: #FDBA74;
+    --accent-bg: #3A2712;
+    --accent-ring: rgba(251,146,60,0.35);
+
+    --nav-bg: rgba(18,22,27,0.86);
+  }
+
+  *{ box-sizing: border-box; }
+  html{ scroll-behavior: smooth; }
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    transition: background .25s ease, color .25s ease;
+  }
+
+  a{ color: inherit; }
+  .wrap{ max-width: 1120px; margin: 0 auto; padding: 0 28px; }
+
+  ::selection{ background: var(--accent); color: #fff; }
+
+  /* NAV */
+  header.nav{
+    position: sticky; top:0; z-index: 50;
+    background: var(--nav-bg);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+  .nav-inner{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 18px 0;
+  }
+  .logo{
+    font-family: var(--mono); font-weight: 700; font-size: 17px;
+    letter-spacing: 0.02em;
+    display:flex; align-items:center; gap:9px;
+  }
+  .logo .mark{ width:20px; height:18px; flex-shrink:0; display:block; }
+  nav.links{ display:flex; gap: 28px; font-size: 14px; }
+  nav.links a{ text-decoration:none; color: var(--ink-soft); font-weight:500; }
+  nav.links a:hover{ color: var(--accent); }
+  .btn{
+    font-family: var(--sans); font-size: 13px; font-weight: 600;
+    padding: 9px 16px; border-radius: 7px;
+    border: 1px solid var(--accent);
+    background: var(--accent); color: #fff;
+    text-decoration:none; cursor:pointer;
+    transition: background .15s ease, transform .15s ease;
+    display:inline-block;
+  }
+  .btn:hover{ background: var(--accent-strong); border-color: var(--accent-strong); transform: translateY(-1px); }
+  .btn:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; box-shadow: 0 0 0 4px var(--accent-ring); }
+  .btn.ghost{
+    background: transparent; color: var(--ink); border-color: var(--line);
+  }
+  .btn.ghost:hover{ background: var(--bg-alt); border-color: var(--ink-soft); }
+
+  .toggle{ display:flex; align-items:center; gap:9px; font-family:var(--mono); font-size:12px; color:var(--ink-soft); }
+  .switch{ width:40px; height:22px; border-radius:20px; background:var(--line); border:1px solid var(--line); position:relative; cursor:pointer; flex-shrink:0; transition:background .2s ease; }
+  .switch::after{ content:""; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:var(--surface); box-shadow:0 1px 2px rgba(0,0,0,0.25); transition:transform .2s ease; }
+  [data-theme="dark"] .switch{ background:var(--accent); border-color:var(--accent); }
+  [data-theme="dark"] .switch::after{ transform:translateX(18px); }
+
+  /* HERO */
+  .hero{
+    padding: 88px 0 96px;
+    display:grid; grid-template-columns: 1.05fr 0.95fr; gap: 56px;
+    align-items:center;
+  }
+  .eyebrow{
+    font-family: var(--mono); font-size: 12.5px; font-weight:600;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--pending);
+    background: var(--pending-bg);
+    display:inline-block; padding: 6px 10px; border-radius: 6px;
+    margin-bottom: 22px;
+  }
+  h1{
+    font-family: var(--mono);
+    font-size: clamp(30px, 4vw, 46px);
+    line-height: 1.12;
+    letter-spacing: -0.01em;
+    margin: 0 0 20px;
+    font-weight: 700;
+  }
+  h1 em{
+    font-style: normal;
+    color: var(--accent);
+  }
+  .lede{
+    font-size: 17px; color: var(--ink-soft); max-width: 46ch;
+    margin: 0 0 32px;
+  }
+  .cta-row{ display:flex; gap: 12px; flex-wrap: wrap; }
+
+  /* HERO VISUAL: spreadsheet -> card transform */
+  .transform-stage{
+    position: relative;
+    height: 320px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .sheet-row, .ticket-card{
+    position:absolute;
+    transition: opacity 1.1s ease, transform 1.1s ease;
+    width: min(340px, 86vw);
+  }
+  .sheet-row{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 14px 16px;
+    font-family: var(--mono); font-size: 12px; color: var(--ink-soft);
+    box-shadow: 0 1px 0 var(--line);
+    opacity: 1;
+    transform: scale(1) rotate(-1.2deg);
+  }
+  .sheet-row .cell-label{ font-size: 10px; color:#98A2AC; text-transform:uppercase; letter-spacing:.06em; }
+  .sheet-row .grid{
+    display:grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; margin-top: 8px;
+  }
+  .sheet-row .qmark{ color: var(--block); font-weight:700; }
+
+  .ticket-card{
+    width: min(300px, 82vw);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 18px 18px 16px;
+    box-shadow: 0 12px 28px -14px rgba(23,30,38,0.28);
+    opacity: 0;
+    transform: scale(0.94) rotate(1.4deg) translateY(10px);
+  }
+  .transform-stage.flipped .sheet-row{ opacity: 0; transform: scale(0.9) rotate(-4deg) translateY(-14px); }
+  .transform-stage.flipped .ticket-card{ opacity: 1; transform: scale(1) rotate(0deg) translateY(0); }
+
+  .ticket-id{ font-family: var(--mono); font-size: 11px; color: var(--ink-soft); }
+  .ticket-title{ font-weight: 600; font-size: 15px; margin: 6px 0 12px; }
+  .chip{
+    display:inline-flex; align-items:center; gap:6px;
+    font-family: var(--mono); font-size: 11px; font-weight:600;
+    padding: 4px 9px; border-radius: 5px; margin-right:6px;
+  }
+  .chip.pending{ background: var(--pending-bg); color: var(--pending); }
+  .chip.pass{ background: var(--pass-bg); color: var(--pass); }
+  .chip.dev{ background: var(--dev-bg); color: var(--dev); }
+  .ticket-meta{ margin-top:14px; font-size:12px; color: var(--ink-soft); }
+
+  section{ padding: 84px 0; border-top: 1px solid var(--line-soft); }
+  .section-head{ max-width: 620px; margin-bottom: 44px; }
+  .section-head .eyebrow{ background: var(--bg-alt); color: var(--ink-soft); }
+  h2{
+    font-family: var(--mono); font-size: clamp(22px, 3vw, 30px);
+    margin: 0 0 12px; font-weight:700; letter-spacing:-0.01em;
+  }
+  .section-sub{ color: var(--ink-soft); font-size: 15.5px; max-width: 56ch; }
+
+  /* PROBLEM SECTION */
+  .compare{
+    display:grid; grid-template-columns: 1fr 1fr; gap: 20px;
+  }
+  .compare-col{
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    overflow:hidden;
+  }
+  .compare-head{
+    padding: 14px 18px; font-family: var(--mono); font-size:12px; font-weight:700;
+    text-transform:uppercase; letter-spacing:.05em;
+    border-bottom: 1px solid var(--line);
+  }
+  .compare-col.bad .compare-head{ color: var(--block); background: var(--block-bg); }
+  .compare-col.good .compare-head{ color: var(--pass); background: var(--pass-bg); }
+  .compare-list{ list-style:none; margin:0; padding: 6px 0; }
+  .compare-list li{
+    padding: 13px 18px; font-size: 14px; border-bottom: 1px solid var(--line-soft);
+    display:flex; gap:10px; align-items:flex-start;
+  }
+  .compare-list li:last-child{ border-bottom:none; }
+  .compare-col.bad .compare-list li{ color: var(--ink-soft); }
+  .mark{ font-family: var(--mono); font-weight:700; flex-shrink:0; margin-top:1px; }
+  .compare-col.bad .mark{ color: var(--block); }
+  .compare-col.good .mark{ color: var(--pass); }
+
+  /* BOARD SECTION */
+  .board{
+    display:grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
+  }
+  .col{
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 14px; min-height: 260px;
+  }
+  .col-title{
+    font-family: var(--mono); font-size: 12px; font-weight:700; color: var(--ink-soft);
+    text-transform: uppercase; letter-spacing:.05em;
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom: 12px;
+  }
+  .col-title .count{
+    background: var(--bg-alt); border-radius: 20px; padding: 1px 8px; font-size:11px;
+  }
+  .board-card{
+    background: var(--bg); border: 1px solid var(--line-soft); border-radius: 8px;
+    padding: 12px; margin-bottom: 10px; font-size: 13px;
+    cursor: pointer; transition: background .15s ease, border-color .15s ease;
+  }
+  .board-card:hover{ background: var(--bg-alt); border-color: var(--ink-soft); }
+  .board-card .ticket-id{ font-size:10.5px; }
+  .board-card .card-title{ font-weight:600; margin: 4px 0 8px; line-height:1.35; }
+
+  .role-row{ display:flex; gap: 10px; margin-top: 36px; flex-wrap:wrap; }
+  .role-pill{
+    font-family: var(--mono); font-size: 12.5px; font-weight:600;
+    border: 1px solid var(--line); border-radius: 30px; padding: 8px 16px;
+    background: var(--surface); color: var(--ink-soft);
+    display:flex; align-items:center; gap:8px;
+    cursor: pointer; transition: background .15s ease, border-color .15s ease, color .15s ease;
+  }
+  .role-pill:hover{ background: var(--accent-bg); border-color: var(--accent); color: var(--accent-strong); }
+  .role-pill b{ color: var(--ink); }
+  .role-pill:hover b{ color: var(--accent-strong); }
+
+  /* MCP TERMINAL */
+  .terminal{
+    background: #171E26; color: #E7ECEF; border-radius: var(--radius);
+    padding: 22px 24px; font-family: var(--mono); font-size: 13.5px;
+    line-height: 1.9; overflow-x:auto;
+  }
+  .terminal .prompt{ color: #7FD1B9; }
+  .terminal .call{ color: #8FB4E3; }
+  .terminal .ok{ color: #7FD1B9; }
+  .terminal .dim{ color: #7D8792; }
+
+  /* FEATURES */
+  .grid-features{
+    display:grid; grid-template-columns: repeat(3, 1fr); gap: 18px;
+  }
+  .feature{
+    border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--surface); padding: 22px;
+  }
+  .feature .f-index{
+    font-family: var(--mono); font-size: 11px; color: var(--ink-soft);
+    margin-bottom: 12px;
+  }
+  .feature h3{ font-size: 15.5px; margin: 0 0 8px; font-weight:700; }
+  .feature p{ font-size: 13.5px; color: var(--ink-soft); margin:0; line-height:1.55; }
+
+  footer{
+    border-top: 1px solid var(--line); padding: 44px 0 60px;
+  }
+  .foot-inner{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; }
+  .foot-tag{ font-size: 13px; color: var(--ink-soft); }
+
+  @media (max-width: 860px){
+    .hero{ grid-template-columns: 1fr; padding: 56px 0 64px; }
+    .compare{ grid-template-columns: 1fr; }
+    .board{ grid-template-columns: repeat(2, 1fr); }
+    .grid-features{ grid-template-columns: 1fr 1fr; }
+    .transform-stage{ height: 260px; }
+    section{ padding: 60px 0; }
+  }
+  @media (max-width: 640px){
+    .wrap{ padding: 0 18px; }
+    .nav-inner{ flex-wrap: wrap; row-gap: 10px; }
+    nav.links{ display:none; }
+    .board{ grid-template-columns: 1fr; }
+    .grid-features{ grid-template-columns: 1fr; }
+    h1{ font-size: clamp(26px, 7vw, 34px); }
+    .lede{ font-size: 15.5px; }
+    .cta-row{ flex-direction: column; align-items: stretch; }
+    .cta-row .btn{ text-align: center; }
+    .transform-stage{ height: 220px; }
+  }
+  @media (max-width: 400px){
+    .hero{ padding: 44px 0 48px; }
+    section{ padding: 48px 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ transition: none !important; }
+  }
+</style>
+</head>
+<body data-theme="light">
+
+<header class="nav">
+  <div class="wrap nav-inner">
+    <div class="logo">
+      <svg class="mark" viewBox="0 0 200 180" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <polygon points="14,10 46,10 110,170 78,170" fill="#4B5563"/>
+        <polygon points="186,10 154,10 90,170 122,170" fill="#4B5563"/>
+        <polygon points="150,10 174,10 102,112 78,112" fill="#2B333C"/>
+        <polygon points="150,10 186,10 168,44" fill="#EA6A0C"/>
+      </svg>
+      VERIDEX
+    </div>
+    <nav class="links">
+      <a href="#problem">Why</a>
+      <a href="#workflow">Workflow</a>
+      <a href="#mcp">MCP</a>
+    </nav>
+    <div style="display:flex; align-items:center; gap:18px;">
+      <div class="toggle">
+        <span id="mode-label">light</span>
+        <div class="switch" id="theme-toggle" role="button" aria-label="Toggle dark mode"></div>
+      </div>
+      <a class="btn ghost" href="#mcp">View concept</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero wrap" style="border-top:none; padding-top:88px;">
+  <div>
+    <span class="eyebrow">Still tracking bugs in a spreadsheet?</span>
+    <h1>Turn scattered rows into <em>a record every role can trust.</em></h1>
+    <p class="lede">Veridex is a QA-aware issue tracker for dev, QA, and test teams — one board, three views, no forgotten column. Built after watching a real team run bug tracking out of a shared Excel file.</p>
+    <div class="cta-row">
+      <a class="btn" href="#workflow">See the workflow</a>
+      <a class="btn ghost" href="#mcp">Run it from an AI agent</a>
+    </div>
+  </div>
+
+  <div class="transform-stage" id="stage">
+    <div class="sheet-row">
+      <div class="cell-label">issues_master_FINAL_v3.xlsx — row 47</div>
+      <div class="grid">
+        <div><div class="cell-label">Bug</div>Login button unresponsive</div>
+        <div><div class="cell-label">Owner</div><span class="qmark">???</span></div>
+        <div><div class="cell-label">Severity</div><span class="qmark">???</span></div>
+        <div><div class="cell-label">Status</div>"ask Sarah"</div>
+      </div>
+    </div>
+    <div class="ticket-card">
+      <div class="ticket-id">TICKET-047</div>
+      <div class="ticket-title">Login button unresponsive on Safari</div>
+      <span class="chip pending">SEVERITY: HIGH</span>
+      <span class="chip dev">DEV: OWNED</span>
+      <div class="ticket-meta">Env: Safari 18 · macOS · Linked to TC-112<br>Status changed 3× · last: In QA</div>
+    </div>
+  </div>
+</section>
+
+<section id="problem">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">The problem</span>
+      <h2>Excel wasn't built for this</h2>
+      <p class="section-sub">A shared spreadsheet works for a week. Then ownership blurs, history disappears, and everyone's looking at a different saved version.</p>
+    </div>
+    <div class="compare">
+      <div class="compare-col bad">
+        <div class="compare-head">The spreadsheet</div>
+        <ul class="compare-list">
+          <li><span class="mark">×</span> No status history — a cell just changes, silently</li>
+          <li><span class="mark">×</span> No clear ownership between dev, QA, and tester</li>
+          <li><span class="mark">×</span> Repro steps buried in a comment, if they exist at all</li>
+          <li><span class="mark">×</span> Version conflicts when two people edit at once</li>
+          <li><span class="mark">×</span> No link between a bug and the test case that caught it</li>
+        </ul>
+      </div>
+      <div class="compare-col good">
+        <div class="compare-head">Veridex</div>
+        <ul class="compare-list">
+          <li><span class="mark">✓</span> Every status change logged, with who and when</li>
+          <li><span class="mark">✓</span> One ticket, role-based views for dev / QA / tester</li>
+          <li><span class="mark">✓</span> Structured fields: severity, environment, steps to reproduce</li>
+          <li><span class="mark">✓</span> One source of truth, live for the whole team</li>
+          <li><span class="mark">✓</span> Test case linkage built into the ticket model</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="workflow">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">The workflow</span>
+      <h2>One board, three ways of looking at it</h2>
+      <p class="section-sub">The same ticket data, filtered by role — a dev sees what's assigned to them, QA sees what's awaiting verification, a tester sees what needs a retest.</p>
+    </div>
+
+    <div class="board">
+      <div class="col">
+        <div class="col-title">Backlog <span class="count">6</span></div>
+        <div class="board-card">
+          <div class="ticket-id">TICKET-051</div>
+          <div class="card-title">Export button misaligned on mobile</div>
+          <span class="chip pending">LOW</span>
+        </div>
+        <div class="board-card">
+          <div class="ticket-id">TICKET-052</div>
+          <div class="card-title">Password reset email delayed</div>
+          <span class="chip pending">MEDIUM</span>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-title">In Progress <span class="count">3</span></div>
+        <div class="board-card">
+          <div class="ticket-id">TICKET-049</div>
+          <div class="card-title">Session expires early on refresh</div>
+          <span class="chip dev">DEV</span>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-title">In QA <span class="count">2</span></div>
+        <div class="board-card">
+          <div class="ticket-id">TICKET-047</div>
+          <div class="card-title">Login button unresponsive on Safari</div>
+          <span class="chip pending">HIGH</span>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-title">Verified <span class="count">11</span></div>
+        <div class="board-card">
+          <div class="ticket-id">TICKET-041</div>
+          <div class="card-title">PDF export missing footer</div>
+          <span class="chip pass">CLOSED</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="role-row">
+      <div class="role-pill"><b>Dev view</b> — assigned to me</div>
+      <div class="role-pill"><b>QA view</b> — awaiting verification</div>
+      <div class="role-pill"><b>Tester view</b> — needs retest</div>
+    </div>
+  </div>
+</section>
+
+<section id="mcp">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">MCP support</span>
+      <h2>Also operable by an AI agent, not just a browser tab</h2>
+      <p class="section-sub">Veridex ships an MCP server so tools like Claude Code can create, read, update, or close tickets directly — useful for devs who'd rather stay in their editor.</p>
+    </div>
+    <div class="terminal">
+      <div><span class="prompt">&gt;</span> mark TICKET-047 as verified and reassign TICKET-051 to QA</div>
+      <div class="dim">&nbsp;</div>
+      <div><span class="call">→ calling</span> update_issue_status(id: "047", status: "verified")</div>
+      <div><span class="call">→ calling</span> assign_issue(id: "051", role: "qa")</div>
+      <div class="dim">&nbsp;</div>
+      <div><span class="ok">✓ Done.</span> 2 tickets updated.</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">What's in it</span>
+      <h2>Built around how bugs actually get fixed</h2>
+    </div>
+    <div class="grid-features">
+      <div class="feature">
+        <div class="f-index">01</div>
+        <h3>Structured ticket fields</h3>
+        <p>Severity, environment, steps to reproduce, and a link to the test case that caught it — not a free-text cell.</p>
+      </div>
+      <div class="feature">
+        <div class="f-index">02</div>
+        <h3>Spreadsheet import</h3>
+        <p>Upload the existing tracking sheet and Veridex maps messy column headers into structured tickets automatically.</p>
+      </div>
+      <div class="feature">
+        <div class="f-index">03</div>
+        <h3>Role-based views</h3>
+        <p>Dev, QA, and tester each see their own lens on the same underlying data — no separate tools to reconcile.</p>
+      </div>
+      <div class="feature">
+        <div class="f-index">04</div>
+        <h3>Full status history</h3>
+        <p>Every transition is logged with who made it and when. Nothing is lost to an overwritten cell.</p>
+      </div>
+      <div class="feature">
+        <div class="f-index">05</div>
+        <h3>MCP tools</h3>
+        <p>Create, read, update, and close tickets from an AI agent — the board stays in sync either way.</p>
+      </div>
+      <div class="feature">
+        <div class="f-index">06</div>
+        <h3>Flexible enough for solo use</h3>
+        <p>Skip the QA-specific fields and it works as a straightforward personal task board too.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-inner">
+    <div class="logo">
+      <svg class="mark" viewBox="0 0 200 180" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <polygon points="14,10 46,10 110,170 78,170" fill="#4B5563"/>
+        <polygon points="186,10 154,10 90,170 122,170" fill="#4B5563"/>
+        <polygon points="150,10 174,10 102,112 78,112" fill="#2B333C"/>
+        <polygon points="150,10 186,10 168,44" fill="#EA6A0C"/>
+      </svg>
+      VERIDEX
+    </div>
+    <div class="foot-tag">Built for teams who are done trusting a spreadsheet.</div>
+  </div>
+</footer>
+
+<script>
+  const stage = document.getElementById('stage');
+  let flipped = false;
+  function toggle(){
+    flipped = !flipped;
+    stage.classList.toggle('flipped', flipped);
+  }
+  setTimeout(() => { toggle(); setInterval(toggle, 3200); }, 900);
+
+  const body = document.body;
+  const themeToggle = document.getElementById('theme-toggle');
+  const modeLabel = document.getElementById('mode-label');
+  themeToggle.addEventListener('click', () => {
+    const isDark = body.getAttribute('data-theme') === 'dark';
+    body.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    modeLabel.textContent = isDark ? 'light' : 'dark';
+  });
+</script>
+
+</body>
+</html>

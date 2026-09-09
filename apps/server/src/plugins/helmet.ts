@@ -1,0 +1,1 @@
+export { default as helmetPlugin } from "@fastify/helmet";
