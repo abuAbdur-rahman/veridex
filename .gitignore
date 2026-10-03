@@ -4,8 +4,6 @@ dist/
 coverage/
 
 # Local environment and secrets
-.env
-.env.*
 !.env.example
 !.env.prod
 *.pem
@@ -21,5 +19,5 @@ temp_auto_push.bat
 temp_interactive_push.bat
 .gitignore
 .vercel
-.env*
 !**/.env.prod
+config.bat
